@@ -10,6 +10,7 @@ endif()
 # Add the SDL subdirectory
 # This should build the SDL library as part of your project
 add_subdirectory(SDL)
+add_subdirectory(SDL_ttf)
 add_subdirectory(NFD)
 
 # Source files
@@ -31,8 +32,8 @@ include_directories(
 # Link SDL2 library
 # Ensure that the SDL2 target is built before your application
 add_executable(${TARGET_NAME} ${LIB_SOURCES})
-add_dependencies(${TARGET_NAME} SDL2-static nfd)
+add_dependencies(${TARGET_NAME} SDL2-static SDL2_ttf nfd)
 
 # No need to manually copy the library file
 # Link the library directly from the build directory
-target_link_libraries(${TARGET_NAME} SDL2-static nfd)
+target_link_libraries(${TARGET_NAME} SDL2-static SDL2_ttf nfd)
