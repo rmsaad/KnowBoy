@@ -9,9 +9,9 @@ endif()
 
 # Add the SDL subdirectory
 # This should build the SDL library as part of your project
-add_subdirectory(SDL)
-add_subdirectory(SDL_ttf)
-add_subdirectory(NFD)
+add_subdirectory(external/SDL)
+add_subdirectory(external/SDL_ttf)
+add_subdirectory(external/NFD)
 
 # Source files
 file(GLOB LIB_SOURCES
