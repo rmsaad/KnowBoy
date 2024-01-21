@@ -1,3 +1,6 @@
 [submodule "platform/sdl/SDL"]
 	path = platform/sdl/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "platform/sdl/NFD"]
+	path = platform/sdl/NFD
+	url = https://github.com/btzy/nativefiledialog-extended.git

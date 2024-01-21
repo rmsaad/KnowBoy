@@ -4,6 +4,7 @@
 #include "logging.h"
 
 #include <SDL.h>
+#include <nfd.h>
 
 // gameboyLib
 #include "gb_cpu.h"
@@ -194,6 +195,56 @@ int main(void)
 		printf("Warning: Linear texture filtering not enabled!");
 	}
 
+	/**/
+	if (NFD_Init() != NFD_OKAY) {
+		// display some error here
+	}
+
+	nfdchar_t *outPath;
+	nfdfilteritem_t filterItem[1] = {{"GB ROM", "gb"}}; // Filter for .gb files
+	nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 1, NULL);
+
+	if (result == NFD_OKAY) {
+		puts("Success!");
+		puts(outPath);
+
+		// Open the file in binary mode
+		FILE *file = fopen(outPath, "rb");
+		if (file == NULL) {
+			fprintf(stderr, "Error: Unable to open file %s\n", outPath);
+			return 1;
+		}
+
+		// Determine the file size
+		fseek(file, 0, SEEK_END);
+		long fileSize = ftell(file);
+		fseek(file, 0, SEEK_SET); // Go back to the start of the file
+
+		// Allocate memory for the file buffer
+		char *buffer = malloc(fileSize);
+		if (buffer == NULL) {
+			fprintf(stderr, "Memory allocation failed\n");
+			fclose(file);
+			return 1;
+		}
+
+		// Read the file into the buffer
+		fread(buffer, 1, fileSize, file);
+		fclose(file);
+
+		// Now buffer contains the file data, and fileSize is the size of the file
+		LOG_INF("file size: %d", fileSize);
+		// ... (Your code to handle the buffer)
+
+		// Free the allocated memory and path
+		free(buffer);
+		NFD_FreePath(outPath);
+	} else if (result == NFD_CANCEL) {
+		puts("User pressed cancel.");
+	} else {
+		printf("Error: %s\n", NFD_GetError());
+	}
+
 	/* initialize emulator */
 	gb_memory_set_rom(KDL_gb);
 	gb_memory_load(gb_memory_get_rom_pointer(), 32768);
@@ -247,6 +298,8 @@ int main(void)
 		SDL_QueueAudio(1, buf.buffer, (*buf.len) * 2);
 		*buf.len = 0;
 	}
+
+	NFD_Quit();
 
 	SDL_FreeSurface(surface);
 	SDL_DestroyWindow(window);

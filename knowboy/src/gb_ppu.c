@@ -513,10 +513,10 @@ void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_d
 void gb_ppu_draw_line_objects(uint8_t ly)
 {
 	for (int obj = 0; obj < 40; obj++) {
-		int16_t y_coordinate = gb_memory_read(OAM_BASE + (obj * 4)) -
-				       16; // must be signed for logic to work
-		int16_t x_coordinate =
-			gb_memory_read(OAM_BASE + (obj * 4) + 1) - 8; // "" "" "" same here
+		// must be signed for logic to work
+		int16_t y_coordinate = gb_memory_read(OAM_BASE + (obj * 4)) - 16;
+		// "" "" "" same here
+		int16_t x_coordinate = gb_memory_read(OAM_BASE + (obj * 4) + 1) - 8;
 		uint8_t data_tile = gb_memory_read(OAM_BASE + (obj * 4) + 2);
 		uint8_t obj_prio = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 7);
 		uint8_t obj_y_flip = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 6);
