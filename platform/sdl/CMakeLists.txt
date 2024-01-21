@@ -37,3 +37,9 @@ add_dependencies(${TARGET_NAME} SDL2-static SDL2_ttf nfd)
 # No need to manually copy the library file
 # Link the library directly from the build directory
 target_link_libraries(${TARGET_NAME} SDL2-static SDL2_ttf nfd)
+
+# Post-build command to copy the nfd.dll to the executable directory
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE_DIR:nfd>/nfd.dll
+            $<TARGET_FILE_DIR:${TARGET_NAME}>)
