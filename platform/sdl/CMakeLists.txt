@@ -34,8 +34,6 @@ include_directories(
 add_executable(${TARGET_NAME} ${LIB_SOURCES})
 add_dependencies(${TARGET_NAME} SDL2 SDL2_ttf nfd)
 
-# No need to manually copy the library file
-# Link the library directly from the build directory
 target_link_libraries(${TARGET_NAME} SDL2 SDL2_ttf nfd)
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
