@@ -129,7 +129,6 @@ typedef uint8_t (*gb_memory_controls_t)(uint8_t *, uint8_t *);
 
 /* Public function prototypes -----------------------------------------------*/
 void gb_memory_set_control_function(gb_memory_controls_t controls);
-void gb_memory_set_rom(const uint8_t *p_rom);
 const uint8_t *gb_memory_get_rom_pointer(void);
 void gb_memory_load(const void *data, uint32_t size);
 void gb_memory_write(uint16_t address, uint8_t data);
@@ -141,6 +140,6 @@ void gb_memory_set_bit(uint16_t address, uint8_t bit);
 void gb_memory_reset_bit(uint16_t address, uint8_t bit);
 void gb_memory_print(void);
 void gb_memory_set_op(uint8_t op);
-void gb_memory_init(void);
+void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom);
 
 #endif /* INCLUDE_GB_MEMORY_H_ */

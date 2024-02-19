@@ -22,6 +22,15 @@ uint8_t gb_mbc_bank_mode = 0x0;
 
 extern const uint8_t *rom; // use the getROM() in gbmemory.c instead change and test this later
 
+void gbc_mbc_init(void)
+{
+	gb_mbc_controller_code = 0;
+	gb_mbc_ram_enable = 0;
+	gb_mbc_offset_low = 0x01;
+	gb_mbc_offset_high = 0x0;
+	gb_mbc_bank_mode = 0x0;
+}
+
 /**
  * @brief sets the cartridge type for use in this file corresponding to data stored at the memory
  * location 0x147

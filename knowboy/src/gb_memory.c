@@ -44,16 +44,6 @@ void gb_memory_set_control_function(gb_memory_controls_t controls)
 }
 
 /**
- * @brief Sets the Gameboy ROM to be played
- * @param p_rom poitner to game ROM
- * @return None
- */
-void gb_memory_set_rom(const uint8_t *p_rom)
-{
-	rom = p_rom;
-}
-
-/**
  * @brief Returns pointer to Start of Gameboy ROM
  * @return Gameboy ROM
  */
@@ -78,9 +68,14 @@ void gb_memory_set_op(uint8_t op)
  * being pressed. The IF register should read 0xE1 to set the appropriate flags.
  * @return Nothing
  */
-void gb_memory_init(void)
+void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom)
 {
 	// memset(mem.ram, 0, 0xFFFF);
+	gbc_mbc_init();
+	rom = game_rom;
+	memset(&mem.ram[0], 0x00, 0xFFFF);
+	gb_memory_load(game_rom, 32768);
+	gb_memory_load(boot_rom, 256);
 	gb_mbc_set_controller_type(mem.ram[0x147]);
 	LOG_INF("CONTROLLER TYPE: %x", mem.ram[0x147]);
 	reg.PC = 0;

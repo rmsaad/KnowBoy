@@ -468,13 +468,11 @@ int init(SDL_Window **window, SDL_Renderer **renderer, SDL_Texture **texture, in
 
 int load_rom(void)
 {
-	gb_memory_set_rom(game_rom);
-	gb_memory_load(gb_memory_get_rom_pointer(), 32768);
-	gb_memory_load(boot_rom, 256);
-	gb_memory_init();
-
-	gb_memory_set_control_function(controls_joypad);
+	SDL_PauseAudio(0);
+	gb_cpu_init();
 	gb_ppu_init();
+	gb_memory_init(boot_rom, game_rom);
+	gb_memory_set_control_function(controls_joypad);
 	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
 	return 0;
 }

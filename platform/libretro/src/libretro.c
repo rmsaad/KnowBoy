@@ -321,12 +321,10 @@ bool retro_load_game(const struct retro_game_info *info)
 	}
 
 	memcpy(rom_data, info->data, info->size);
-	gb_memory_set_rom(rom_data);
-	gb_memory_load(gb_memory_get_rom_pointer(), 32768);
-	gb_memory_load(boot_rom_data, 256);
-	gb_memory_init();
-	gb_memory_set_control_function(prvControlsJoypad);
+	gb_cpu_init();
 	gb_ppu_init();
+	gb_memory_init(boot_rom_data, rom_data);
+	gb_memory_set_control_function(prvControlsJoypad);
 	gb_ppu_set_display_frame_buffer(prvDisplayLineBuffer);
 	return true;
 }

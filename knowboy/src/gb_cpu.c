@@ -19,6 +19,8 @@ uint8_t stopped = 0;
 uint8_t halted = 0;
 uint8_t interrupt_master_enable = 0;
 uint8_t one_cycle_interrupt_delay = 0;
+uint8_t op_remaining = 0;
+int interupt_dur = 0;
 
 extern registers_t reg;
 
@@ -3282,6 +3284,16 @@ void gb_cpu_halted_handler(void)
 	}
 }
 
+void gb_cpu_init(void)
+{
+	stopped = 0;
+	halted = 0;
+	interrupt_master_enable = 0;
+	one_cycle_interrupt_delay = 0;
+	op_remaining = 0;
+	interupt_dur = 0;
+}
+
 /**
  * @brief fetch, decode and execute 1 CPU instruction, increment timers and jump
  * to interrupt handler
@@ -3294,8 +3306,6 @@ void gb_cpu_step(void)
 	// gb_memory_set_op(opcode);
 
 	uint8_t opcode = gb_memory_read(reg.PC);
-	static uint8_t op_remaining = 0;
-	static int interupt_dur = 0;
 
 	/* IF not halted */
 	if (halted) {
