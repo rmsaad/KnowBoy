@@ -38,6 +38,7 @@
 #define C_FLAG_VAL (0x1 << C_FLAG_BIT)
 
 #define CUSTOM_CYCLES 255
+#define CUSTOM_TIMING 255
 
 /* Increment 8 bit register */
 static inline void gb_cpu_inc_register(uint8_t *reg, uint8_t *flag_reg)
@@ -252,22 +253,6 @@ static inline void gb_cpu_bit_check(uint8_t *reg_x, uint8_t bit, uint8_t *flag_r
 				    : SET_BIT(*flag_reg, Z_FLAG_BIT);
 	RST_BIT(*flag_reg, N_FLAG_BIT);
 	SET_BIT(*flag_reg, H_FLAG_BIT);
-}
-
-/* Resets a bit in the memory address that is held in the HL register */
-static inline void gb_cpu_reset_HL_address_bit(uint16_t *reg_hl, uint8_t bit)
-{
-	uint8_t temp_res = gb_memory_read(*reg_hl);
-	RST_BIT(temp_res, bit);
-	gb_memory_write(*reg_hl, temp_res);
-}
-
-/* Sets a bit in the memory address that is held in the HL register */
-static inline void gb_cpu_set_HL_address_bit(uint16_t *reg_hl, uint8_t bit)
-{
-	uint8_t temp_res = gb_memory_read(*reg_hl);
-	SET_BIT(temp_res, bit);
-	gb_memory_write(*reg_hl, temp_res);
 }
 
 /* type defs */
