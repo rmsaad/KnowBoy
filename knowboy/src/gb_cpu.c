@@ -3979,7 +3979,7 @@ uint8_t fetch_custom_duration(int opcode)
  * corresponding ISR
  * @returns Nothing
  */
-void gb_cpu_interrupt_handler(uint8_t *op_remaining, int *interupt_dur)
+void gb_cpu_interrupt_handler(int *interupt_dur)
 {
 	if (one_cycle_interrupt_delay == 1) {
 		if (gb_memory_read(IE_ADDR) & gb_memory_read(IF_ADDR) & 0x1F) {
@@ -4143,13 +4143,13 @@ finally:
 	/* Inc timers */
 	gb_memory_inc_timers(1);
 
-	/* Handle interupts */
-	if (interrupt_master_enable == 1) {
-		gb_cpu_interrupt_handler(&op_remaining, &interupt_dur);
-	} else if (halted == 1) {
-		gb_cpu_halted_handler();
-	}
-
 	/* dec op remaining */
 	op_remaining--;
+
+	/* Handle interupts */
+	if (interrupt_master_enable == 1 && op_remaining == 0) {
+		gb_cpu_interrupt_handler(&interupt_dur);
+	} else if (halted == 1 && op_remaining == 0) {
+		gb_cpu_halted_handler();
+	}
 }
