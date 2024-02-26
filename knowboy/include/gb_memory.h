@@ -84,6 +84,161 @@
 #define TILE_MAP_LOCATION_LOW  0x9800
 #define TILE_MAP_LOCATION_HIGH 0x9C00
 
+#define BIT_POS_0 (0x01 << 0)
+#define BIT_POS_1 (0x01 << 1)
+#define BIT_POS_2 (0x01 << 2)
+#define BIT_POS_3 (0x01 << 3)
+#define BIT_POS_4 (0x01 << 4)
+#define BIT_POS_5 (0x01 << 5)
+#define BIT_POS_6 (0x01 << 6)
+#define BIT_POS_7 (0x01 << 7)
+
+/* NR52 */
+#define CH1_ON	 BIT_POS_0
+#define CH2_ON	 BIT_POS_1
+#define CH3_ON	 BIT_POS_2
+#define CH4_ON	 BIT_POS_3
+#define AUDIO_ON BIT_POS_7
+
+/* NR51 */
+#define CH1_RIGHT BIT_POS_0
+#define CH2_RIGHT BIT_POS_1
+#define CH3_RIGHT BIT_POS_2
+#define CH4_RIGHT BIT_POS_3
+#define CH1_LEFT  BIT_POS_4
+#define CH2_LEFT  BIT_POS_5
+#define CH3_LEFT  BIT_POS_6
+#define CH4_LEFT  BIT_POS_7
+
+/* NR50 */
+#define VOL_RIGHT_OFFSET 0
+#define VOL_LEFT_OFFSET	 4
+#define VOL_RIGHT	 (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define VIN_RIGHT	 BIT_POS_3
+#define VOL_LEFT	 (BIT_POS_4 + BIT_POS_5 + BIT_POS_6)
+#define VIN_LEFT	 BIT_POS_7
+
+/* NR10 */
+#define CH1_PERIOD_SWEEP_STEP_OFFSET 0
+#define CH1_PERIOD_SWEEP_DIR_OFFSET  3
+#define CH1_PERIOD_SWEEP_PACE_OFFSET 4
+#define CH1_PERIOD_SWEEP_STEP	     (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH1_PERIOD_SWEEP_DIR	     BIT_POS_3
+#define CH1_PERIOD_SWEEP_PACE	     (BIT_POS_4 + BIT_POS_5 + BIT_POS_6)
+
+/* NR11 */
+#define CH1_INITIAL_LEN_TIMER_OFFSET 0
+#define CH1_WAVE_DUTY_OFFSET	     6
+#define CH1_INITIAL_LEN_TIMER                                                                      \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5)
+#define CH1_WAVE_DUTY (BIT_POS_6 + BIT_POS_7)
+
+/* NR12 */
+#define CH1_SWEEP_PACE_OFFSET	0
+#define CH1_ENVELOPE_DIR_OFFSET 3
+#define CH1_INITIAL_VOL_OFFSET	4
+#define CH1_SWEEP_PACE		(BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH1_ENVELOPE_DIR	(BIT_POS_3)
+#define CH1_INITIAL_VOL		(BIT_POS_4 + BIT_POS_5 + BIT_POS_6 + BIT_POS_7)
+
+/* NR13 */
+#define CH1_PERIOD_LOW_OFFSET 0
+#define CH1_PERIOD_LOW                                                                             \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5 + BIT_POS_6 +       \
+	 BIT_POS_7)
+
+/* NR14 */
+#define CH1_PERIOD_HIGH_OFFSET 0
+#define CH1_LEN_EN_OFFSET      6
+#define CH1_TRIGGER_OFFSET     7
+#define CH1_PERIOD_HIGH	       (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH1_LEN_EN	       BIT_POS_6
+#define CH1_TRIGGER	       BIT_POS_7
+
+/* NR21 */
+#define CH2_INITIAL_LEN_TIMER_OFFSET 0
+#define CH2_WAVE_DUTY_OFFSET	     6
+#define CH2_INITIAL_LEN_TIMER                                                                      \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5)
+#define CH2_WAVE_DUTY (BIT_POS_6 + BIT_POS_7)
+
+/* NR22 */
+#define CH2_SWEEP_PACE_OFFSET	0
+#define CH2_ENVELOPE_DIR_OFFSET 3
+#define CH2_INITIAL_VOL_OFFSET	4
+#define CH2_SWEEP_PACE		(BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH2_ENVELOPE_DIR	(BIT_POS_3)
+#define CH2_INITIAL_VOL		(BIT_POS_4 + BIT_POS_5 + BIT_POS_6 + BIT_POS_7)
+
+/* NR23 */
+#define CH2_PERIOD_LOW_OFFSET 0
+#define CH2_PERIOD_LOW                                                                             \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5 + BIT_POS_6 +       \
+	 BIT_POS_7)
+
+/* NR24 */
+#define CH2_PERIOD_HIGH_OFFSET 0
+#define CH2_LEN_EN_OFFSET      6
+#define CH2_TRIGGER_OFFSET     7
+#define CH2_PERIOD_HIGH	       (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH2_LEN_EN	       BIT_POS_6
+#define CH2_TRIGGER	       BIT_POS_7
+
+/* NR30 */
+#define CH3_DAQ_ON_OFFSET 7
+#define CH3_DAQ_ON	  BIT_POS_7
+
+/* NR31 */
+#define CH3_INITIAL_LEN_TIMER_OFFSET 0
+#define CH3_INITIAL_LEN_TIMER                                                                      \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5 + BIT_POS_6 +       \
+	 BIT_POS_7)
+
+/* NR32 */
+#define CH3_OUTPUT_LEVEL_OFFSET 5
+#define CH3_OUTPUT_LEVEL	(BIT_POS_5 + BIT_POS_6)
+
+/* NR33*/
+#define CH3_PERIOD_LOW_OFFSET 0
+#define CH3_PERIOD_LOW                                                                             \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5 + BIT_POS_6 +       \
+	 BIT_POS_7)
+
+/* NR34*/
+#define CH3_PERIOD_HIGH_OFFSET 0
+#define CH3_LEN_EN_OFFSET      6
+#define CH3_TRIGGER_OFFSET     7
+#define CH3_PERIOD_HIGH	       (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH3_LEN_EN	       BIT_POS_6
+#define CH3_TRIGGER	       BIT_POS_7
+
+/* NR41 */
+#define CH4_INITIAL_LEN_TIMER_OFFSET 0
+#define CH4_INITIAL_LEN_TIMER                                                                      \
+	(BIT_POS_0 + BIT_POS_1 + BIT_POS_2 + BIT_POS_3 + BIT_POS_4 + BIT_POS_5)
+
+/* NR42 */
+#define CH4_SWEEP_PACE_OFFSET	0
+#define CH4_ENVELOPE_DIR_OFFSET 3
+#define CH4_INITIAL_VOL_OFFSET	4
+#define CH4_SWEEP_PACE		(BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH4_ENVELOPE_DIR	(BIT_POS_3)
+#define CH4_INITIAL_VOL		(BIT_POS_4 + BIT_POS_5 + BIT_POS_6 + BIT_POS_7)
+
+/* NR43 */
+#define CH4_CLOCK_DIV_OFFSET   0
+#define CH4_LFSR_WIDTH_OFFSET  3
+#define CH4_CLOCK_SHIFT_OFFSET 4
+#define CH4_CLOCK_DIV	       (BIT_POS_0 + BIT_POS_1 + BIT_POS_2)
+#define CH4_LFSR_WIDTH	       (BIT_POS_3)
+#define CH4_CLOCK_SHIFT	       (BIT_POS_4 + BIT_POS_5 + BIT_POS_6 + BIT_POS_7)
+
+/* NR44 */
+#define CH4_LEN_EN_OFFSET  6
+#define CH4_TRIGGER_OFFSET 7
+#define CH4_LEN_EN	   BIT_POS_6
+#define CH4_TRIGGER	   BIT_POS_7
+
 typedef struct {
 	union {
 		struct {

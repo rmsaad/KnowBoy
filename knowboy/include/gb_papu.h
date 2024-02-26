@@ -15,9 +15,9 @@ typedef struct {
 } audio_buf_t;
 
 audio_buf_t gb_papu_step(void);
-void gb_papu_trigger_ch1(uint8_t data);
-void gb_papu_trigger_ch2(uint8_t data);
-void gb_papu_trigger_ch3(uint8_t data);
-void gb_papu_trigger_ch4(uint8_t data);
+void gb_papu_trigger_ch1(void);
+void gb_papu_trigger_ch2(void);
+void gb_papu_trigger_ch3(void);
+void gb_papu_trigger_ch4(void);
 
 #endif /* INCLUDE_GB_PAPU_H_ */

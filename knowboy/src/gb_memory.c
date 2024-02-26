@@ -77,7 +77,6 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom)
 	gb_memory_load(game_rom, 32768);
 	gb_memory_load(boot_rom, 256);
 	gb_mbc_set_controller_type(mem.ram[0x147]);
-	LOG_INF("CONTROLLER TYPE: %x", mem.ram[0x147]);
 	reg.PC = 0;
 	reg.AF = 0;
 	reg.BC = 0;
@@ -165,41 +164,35 @@ void gb_memory_write(uint16_t address, uint8_t data)
 		}
 
 		else if (address == NR52_ADDR) {
-			//            if(CHK_BIT(data, 7)) {
-			//                mem.ram[address] |= 0x80;
-			//            }else {
-			//                mem.ram[address] &= ~(0x80);
-			//            }
-			//            return;
-			if (data) {
-				mem.ram[NR52_ADDR] = 0xFF;
+			if (CHK_BIT(data, 7)) {
+				mem.ram[address] |= 0xF0;
 			} else {
-				mem.ram[NR52_ADDR] = 0x00;
+				mem.ram[address] &= ~(0xF0);
 			}
 			return;
 		}
 
 		else if (address == NR14_ADDR && CHK_BIT(data, 7)) {
 			mem.ram[address] = data;
-			gb_papu_trigger_ch1(mem.ram[NR11_ADDR] & 0x3f);
+			gb_papu_trigger_ch1();
 			return;
 		}
 
 		else if (address == NR24_ADDR && CHK_BIT(data, 7)) {
 			mem.ram[address] = data;
-			gb_papu_trigger_ch2(mem.ram[NR21_ADDR] & 0x3f);
+			gb_papu_trigger_ch2();
 			return;
 		}
 
 		else if (address == NR34_ADDR && CHK_BIT(data, 7)) {
 			mem.ram[address] = data;
-			gb_papu_trigger_ch3(mem.ram[NR31_ADDR]);
+			gb_papu_trigger_ch3();
 			return;
 		}
 
 		else if (address == NR44_ADDR && CHK_BIT(data, 7)) {
 			mem.ram[address] = data;
-			gb_papu_trigger_ch4(mem.ram[NR41_ADDR] & 0x3f);
+			gb_papu_trigger_ch4();
 			return;
 		}
 	}
