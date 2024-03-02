@@ -2,12 +2,17 @@ cmake_minimum_required(VERSION 3.20)
 project(Knowboy)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/app)
+set(EXTRA_LIBS "")
 
 if(WIN32)
     set(CMAKE_C_FLAGS_RELEASE "/O2")
     set(CMAKE_C_FLAGS_DEBUG "/Od /Zi")
 else()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+    list(APPEND EXTRA_LIBS ${GTK3_LIBRARIES})
+    set(CMAKE_C_FLAGS_RELEASE "-O2")
+    set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
@@ -31,7 +36,7 @@ include_directories(
 
 add_executable(${TARGET_NAME} ${LIB_SOURCES})
 add_dependencies(${TARGET_NAME} SDL2 SDL2_ttf NFD)
-target_link_libraries(${TARGET_NAME} "${SDL2_LIBRARIES};${SDL2_TTF_LIBRARY};${NFD_LIBRARY}")
+target_link_libraries(${TARGET_NAME} "${SDL2_LIBRARIES};${SDL2_TTF_LIBRARY};${NFD_LIBRARY};${EXTRA_LIBS}")
 target_include_directories(${TARGET_NAME} PUBLIC ${SDL2_INCLUDE_DIR} ${SDL2_TTF_INCLUDE_DIR} ${NFD_INCLUDE_DIR})
 
 IF(WIN32)

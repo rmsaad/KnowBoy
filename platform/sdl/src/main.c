@@ -26,7 +26,7 @@
 
 const char *main_menu_texts[MAIN_MENU_OPTIONS] = {"Start Game", "Load Bootloader", "Load ROM"};
 const char *pause_menu_texts[PAUSE_MENU_OPTIONS] = {"Resume Game", "Return to Menu"};
-const char *FONT_PATH = "resources/Gameboy.ttf";
+const char *FONT_PATH = "resources/GameBoy.ttf";
 TTF_Font *font = NULL;
 SDL_Color selectedColor = {COLOR_1_R, COLOR_1_G, COLOR_1_B};
 SDL_Color normalColor = {COLOR_3_R, COLOR_3_G, COLOR_3_B};
@@ -575,7 +575,7 @@ void render_frame_buffer(SDL_Renderer *renderer, SDL_Texture *texture, int windo
 	SDL_RenderPresent(renderer);
 }
 
-void close(SDL_Window *window, SDL_Renderer *renderer, SDL_Texture *texture)
+void app_close(SDL_Window *window, SDL_Renderer *renderer, SDL_Texture *texture)
 {
 	NFD_Quit();
 	SDL_DestroyTexture(texture);
@@ -595,7 +595,7 @@ int main(void)
 
 	if (init(&window, &renderer, &texture, window_width, window_height) != 0) {
 		LOG_ERR("Failed to initialize emulator");
-		close(window, renderer, texture);
+		app_close(window, renderer, texture);
 		exit(1);
 	}
 
@@ -618,6 +618,6 @@ int main(void)
 		}
 	}
 
-	close(window, renderer, texture);
+	app_close(window, renderer, texture);
 	return 0;
 }

@@ -13,15 +13,18 @@
         },
         {
             "label": "SDL Debug Make",
+            "options": {
+                "cwd": "${workspaceFolder}/platform/sdl/build"
+            },
             "windows": {
                 "command": "msbuild",
                 "args": [
-                    "${workspaceFolder}/platform/sdl/build/Knowboy.sln",
+                    "Knowboy.sln",
                     "/p:Configuration=Debug"
                 ],
             },
             "linux": {
-                "command": ""
+                "command": "make"
             }
         },
         {

@@ -2,6 +2,8 @@
 #ifndef LOGGING_H_
 #define LOGGING_H_
 
+#include <stddef.h>
+
 void log_cb(const char *level, const char *fmt, ...);
 void hexdump_log_cb(const char *level, const void *data, size_t size);
 
