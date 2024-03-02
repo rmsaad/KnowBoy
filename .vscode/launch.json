@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Knowboy",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "preLaunchTask": "SDL Debug Build",
+            "program": "${workspaceFolder}/platform/sdl/build/Debug/Knowboy.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/platform/sdl/build/Debug",
+            "symbolSearchPath": "${workspaceFolder}/platform/sdl/build/Debug",
+            "environment": [],
+            "console": "internalConsole",
+        }
+    ]
+}
