@@ -70,18 +70,27 @@ char *find_value_for_name(const char *filePath, const char *name)
 
 int update_or_add_pair(const char *filePath, const char *name, const char *value)
 {
-	char *existingValue = find_value_for_name(CACHE_FILE, name);
+
+	char *existingValue = find_value_for_name(filePath, name);
 	int needToUpdate = existingValue != NULL && strcmp(existingValue, value) != 0;
 
 	if (existingValue == NULL || needToUpdate) {
-		FILE *file = fopen(filePath, "a+");
+		FILE *file = fopen(filePath, "r+");
 		if (file == NULL) {
 			free(existingValue);
 			return -1;
 		}
 
+		char tempFilePath[MAX_LINE_LENGTH];
+		snprintf(tempFilePath, sizeof(tempFilePath), "%s.tmp", filePath);
+		FILE *tempFile = fopen(tempFilePath, "w+");
+		if (tempFile == NULL) {
+			fclose(file);
+			free(existingValue);
+			return -1;
+		}
+
 		if (needToUpdate) {
-			FILE *tempFile = tmpfile();
 			rewind(file);
 			char line[MAX_LINE_LENGTH];
 			while (fgets(line, sizeof(line), file) != NULL) {
@@ -92,12 +101,17 @@ int update_or_add_pair(const char *filePath, const char *name, const char *value
 				}
 			}
 			fprintf(tempFile, "%s=%s\n", name, value);
-
 		} else {
-			fprintf(file, "%s=%s\n", name, value);
+			fprintf(tempFile, "%s=%s\n", name, value);
 		}
 
 		fclose(file);
+		fclose(tempFile);
+
+		if (remove(filePath) != 0 || rename(tempFilePath, filePath) != 0) {
+			free(existingValue);
+			return -1;
+		}
 	}
 
 	free(existingValue);
