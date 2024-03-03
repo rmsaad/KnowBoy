@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "SDL Debug Cmake",
+            "label": "SDL Cmake (Debug)",
             "type": "shell",
             "command": "cmake",
             "args": [
@@ -12,7 +12,7 @@
             ]
         },
         {
-            "label": "SDL Debug Make",
+            "label": "SDL Make (Debug)",
             "options": {
                 "cwd": "${workspaceFolder}/platform/sdl/build"
             },
@@ -28,11 +28,50 @@
             }
         },
         {
-            "label": "SDL Debug Build",
+            "label": "SDL Cmake (Release)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B ./platform/sdl/build",
+                "./platform/sdl",
+                "-DCMAKE_BUILD_TYPE=Release",
+            ]
+        },
+        {
+            "label": "SDL Make (Release)",
+            "options": {
+                "cwd": "${workspaceFolder}/platform/sdl/build"
+            },
+            "windows": {
+                "command": "msbuild",
+                "args": [
+                    "Knowboy.sln",
+                    "/p:Configuration=Release"
+                ],
+            },
+            "linux": {
+                "command": "make"
+            }
+        },
+        {
+            "label": "SDL Build (Debug)",
             "dependsOrder": "sequence",
             "dependsOn": [
-                "SDL Debug Cmake",
-                "SDL Debug Make"
+                "SDL Cmake (Debug)",
+                "SDL Make (Debug)"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "SDL Build (Release)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "SDL Cmake (Release)",
+                "SDL Make (Release)"
             ],
             "problemMatcher": [],
             "group": {
