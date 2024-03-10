@@ -3,12 +3,57 @@
 #define MAIN_H_
 
 #include <SDL.h>
+#include <SDL_ttf.h>
+
+#define MAX_MENU_OPTIONS 3
+
+typedef struct {
+	bool enable;
+	SDL_Window *window;
+	SDL_Renderer *renderer;
+	SDL_Texture *texture;
+	int window_width;
+	int window_height;
+	const float aspect_ratio;
+} gb_av_t;
+
+typedef struct {
+	TTF_Font *ttf;
+	const char *path;
+	const int size;
+	const SDL_Color select_color;
+	const SDL_Color default_color;
+} gb_font_t;
+
+typedef struct {
+	const char *options[MAX_MENU_OPTIONS];
+	const int size;
+	int cursor;
+} gb_menu_t;
+
+typedef struct {
+	char *data;
+	char *path;
+	bool valid;
+} gb_rom_t;
 
 typedef enum {
 	MAIN_MENU = 0U,
 	PAUSE_MENU,
 	ROM_RUNNING,
-} emulator_mode_t;
+} gb_state_t;
+
+typedef struct {
+	gb_av_t av;
+	gb_font_t font;
+	gb_menu_t main_menu;
+	gb_menu_t pause_menu;
+	gb_rom_t game_rom;
+	gb_rom_t boot_rom;
+	gb_state_t state;
+	bool boot_skip;
+	const char *cache_file;
+} gb_config_t;
 
 #define COLOR_1 0XFF9BBC0F
 #define COLOR_2 0XFF8BAC0F

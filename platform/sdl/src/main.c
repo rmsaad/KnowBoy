@@ -18,35 +18,15 @@
 #include "gb_papu.h"
 #include "gb_ppu.h"
 
-#define PAUSE_MENU_OPTIONS 2
-#define MAIN_MENU_OPTIONS  3
-#define MENU_FONT_SIZE	   24
-#define MAX_LINE_LENGTH	   1024
-#define CACHE_FILE	   "cache.txt"
+#define MAX_LINE_LENGTH 1024
 
-const char *main_menu_texts[MAIN_MENU_OPTIONS] = {"Start Game", "Load Bootloader", "Load ROM"};
-const char *pause_menu_texts[PAUSE_MENU_OPTIONS] = {"Resume Game", "Return to Menu"};
-const char *FONT_PATH = "resources/GameBoy.ttf";
-TTF_Font *font = NULL;
-SDL_Color selectedColor = {COLOR_1_R, COLOR_1_G, COLOR_1_B};
-SDL_Color normalColor = {COLOR_3_R, COLOR_3_G, COLOR_3_B};
-int selectedOption = 0;
-int selectedOption2 = 0;
+static uint8_t dir_input = 0;
+static uint8_t but_input = 0;
+static uint32_t framebuffer[GAMEBOY_SCREEN_HEIGHT * GAMEBOY_SCREEN_WIDTH] = {0};
 
-uint8_t dir_input = 0;
-uint8_t but_input = 0;
-char *game_rom = NULL;
-char *boot_rom = NULL;
-bool valid_game_rom = false;
-bool valid_boot_rom = false;
-char *game_rom_path = NULL;
-char *boot_rom_path = NULL;
-emulator_mode_t mode = MAIN_MENU;
-uint32_t framebuffer[GAMEBOY_SCREEN_HEIGHT * GAMEBOY_SCREEN_WIDTH] = {0};
-
-char *find_value_for_name(const char *filePath, const char *name)
+char *find_value_for_name(const char *file_path, const char *name)
 {
-	FILE *file = fopen(filePath, "r");
+	FILE *file = fopen(file_path, "r");
 	if (file == NULL) {
 		return NULL;
 	}
@@ -54,11 +34,11 @@ char *find_value_for_name(const char *filePath, const char *name)
 	char line[MAX_LINE_LENGTH];
 	char *value = NULL;
 	while (fgets(line, sizeof(line), file) != NULL) {
-		char currentName[MAX_LINE_LENGTH];
-		char currentValue[MAX_LINE_LENGTH];
-		if (sscanf(line, "%[^=]=%s", currentName, currentValue) == 2) {
-			if (strcmp(currentName, name) == 0) {
-				value = strdup(currentValue);
+		char current_name[MAX_LINE_LENGTH];
+		char current_value[MAX_LINE_LENGTH];
+		if (sscanf(line, "%[^=]=%s", current_name, current_value) == 2) {
+			if (strcmp(current_name, name) == 0) {
+				value = strdup(current_value);
 				break;
 			}
 		}
@@ -68,101 +48,101 @@ char *find_value_for_name(const char *filePath, const char *name)
 	return value;
 }
 
-int update_or_add_pair(const char *filePath, const char *name, const char *value)
+int update_or_add_pair(const char *file_path, const char *name, const char *value)
 {
 
-	char *existingValue = find_value_for_name(filePath, name);
-	int needToUpdate = existingValue != NULL && strcmp(existingValue, value) != 0;
+	char *existing_value = find_value_for_name(file_path, name);
+	int needs_update = existing_value != NULL && strcmp(existing_value, value) != 0;
 
-	if (existingValue == NULL || needToUpdate) {
-		FILE *file = fopen(filePath, "r+");
+	if (existing_value == NULL || needs_update) {
+		FILE *file = fopen(file_path, "r+");
 		if (file == NULL) {
-			free(existingValue);
+			free(existing_value);
 			return -1;
 		}
 
-		char tempFilePath[MAX_LINE_LENGTH];
-		snprintf(tempFilePath, sizeof(tempFilePath), "%s.tmp", filePath);
-		FILE *tempFile = fopen(tempFilePath, "w+");
-		if (tempFile == NULL) {
+		char temp_file_path[MAX_LINE_LENGTH];
+		snprintf(temp_file_path, sizeof(temp_file_path), "%s.tmp", file_path);
+		FILE *temp_file = fopen(temp_file_path, "w+");
+		if (temp_file == NULL) {
 			fclose(file);
-			free(existingValue);
+			free(existing_value);
 			return -1;
 		}
 
-		if (needToUpdate) {
+		if (needs_update) {
 			rewind(file);
 			char line[MAX_LINE_LENGTH];
 			while (fgets(line, sizeof(line), file) != NULL) {
-				char currentName[MAX_LINE_LENGTH];
-				if (sscanf(line, "%[^=]", currentName) == 1 &&
-				    strcmp(currentName, name) != 0) {
-					fputs(line, tempFile);
+				char current_name[MAX_LINE_LENGTH];
+				if (sscanf(line, "%[^=]", current_name) == 1 &&
+				    strcmp(current_name, name) != 0) {
+					fputs(line, temp_file);
 				}
 			}
-			fprintf(tempFile, "%s=%s\n", name, value);
+			fprintf(temp_file, "%s=%s\n", name, value);
 		} else {
-			fprintf(tempFile, "%s=%s\n", name, value);
+			fprintf(temp_file, "%s=%s\n", name, value);
 		}
 
 		fclose(file);
-		fclose(tempFile);
+		fclose(temp_file);
 
-		if (remove(filePath) != 0 || rename(tempFilePath, filePath) != 0) {
-			free(existingValue);
+		if (remove(file_path) != 0 || rename(temp_file_path, file_path) != 0) {
+			free(existing_value);
 			return -1;
 		}
 	}
 
-	free(existingValue);
+	free(existing_value);
 	return 0;
 }
 
-int read_file_into_buffer(const char *filePath, char **buffer, size_t *fileSize)
+int read_file_into_buffer(const char *file_path, char **buffer, size_t *file_size)
 {
-	FILE *file = fopen(filePath, "rb");
+	FILE *file = fopen(file_path, "rb");
 	if (file == NULL) {
-		LOG_ERR("Error: Unable to open file %s", filePath);
+		LOG_ERR("Error: Unable to open file %s", file_path);
 		return -1;
 	}
 
 	fseek(file, 0, SEEK_END);
-	*fileSize = ftell(file);
+	*file_size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	*buffer = (char *)malloc(*fileSize);
+	*buffer = (char *)malloc(*file_size);
 	if (*buffer == NULL) {
 		LOG_ERR("Memory allocation failed");
 		fclose(file);
 		return -2;
 	}
 
-	fread(*buffer, 1, *fileSize, file);
+	fread(*buffer, 1, *file_size, file);
 	fclose(file);
-	LOG_INF("File size: %zu bytes", *fileSize);
+	LOG_INF("File size: %zu bytes", *file_size);
 
 	return 0;
 }
 
-int nfd_read_file(char **buffer, size_t *fileSize, char **outPathReturned)
+int nfd_read_file(char **buffer, size_t *file_size, char **out_path_returned)
 {
-	nfdchar_t *outPath = NULL;
-	nfdfilteritem_t filterItem[2] = {{"GB ROM", "gb"}, {"BIN File", "bin"}};
-	nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 2, NULL);
+	nfdchar_t *out_path = NULL;
+	nfdfilteritem_t filter_item[2] = {{"GB ROM", "gb"}, {"BIN File", "bin"}};
+	nfdresult_t result = NFD_OpenDialog(&out_path, filter_item, 2, NULL);
 
 	if (result == NFD_OKAY) {
 		LOG_INF("Success!");
-		LOG_INF("%s", outPath);
+		LOG_INF("%s", out_path);
 
-		*outPathReturned = strdup(outPath);
-		if (*outPathReturned == NULL) {
+		*out_path_returned = strdup(out_path);
+		if (*out_path_returned == NULL) {
 			LOG_ERR("Error duplicating outPath");
-			NFD_FreePath(outPath);
+			NFD_FreePath(out_path);
 			return -4;
 		}
 
-		int readResult = read_file_into_buffer(outPath, buffer, fileSize);
-		NFD_FreePath(outPath);
+		int readResult = read_file_into_buffer(out_path, buffer, file_size);
+		NFD_FreePath(out_path);
 		return 0;
 	} else if (result == NFD_CANCEL) {
 		LOG_ERR("User pressed cancel.");
@@ -173,7 +153,7 @@ int nfd_read_file(char **buffer, size_t *fileSize, char **outPathReturned)
 	}
 }
 
-void rom_running_input(SDL_Event *event)
+void rom_running_input(gb_config_t *gb_config, SDL_Event *event)
 {
 	switch (event->type) {
 	case SDL_KEYDOWN: {
@@ -205,7 +185,7 @@ void rom_running_input(SDL_Event *event)
 			but_input |= (0x1 << 3);
 			break;
 		case SDLK_ESCAPE:
-			mode = PAUSE_MENU;
+			gb_config->state = PAUSE_MENU;
 		}
 		break;
 	}
@@ -244,7 +224,7 @@ void rom_running_input(SDL_Event *event)
 	}
 }
 
-void main_menu_input(SDL_Event *event)
+void main_menu_input(gb_config_t *gb_config, SDL_Event *event)
 {
 	int r = 0;
 	size_t dummy_temp;
@@ -253,41 +233,45 @@ void main_menu_input(SDL_Event *event)
 	case SDL_KEYDOWN: {
 		switch (event->key.keysym.sym) {
 		case SDLK_UP:
-			selectedOption--;
-			if (selectedOption < 0) {
-				selectedOption = MAIN_MENU_OPTIONS - 1;
+			gb_config->main_menu.cursor--;
+			if (gb_config->main_menu.cursor < 0) {
+				gb_config->main_menu.cursor = gb_config->main_menu.size - 1;
 			}
 			break;
 		case SDLK_DOWN:
-			selectedOption++;
-			if (selectedOption >= MAIN_MENU_OPTIONS) {
-				selectedOption = 0;
+			gb_config->main_menu.cursor++;
+			if (gb_config->main_menu.cursor >= gb_config->main_menu.size) {
+				gb_config->main_menu.cursor = 0;
 			}
 			break;
 		case SDLK_RETURN:
-			printf("Option %d selected!\n", selectedOption + 1);
+			LOG_DBG("Main Menu Option: %d selected!", gb_config->main_menu.cursor + 1);
 
-			switch (selectedOption) {
+			switch (gb_config->main_menu.cursor) {
 			case 0:
-				if (valid_boot_rom && valid_game_rom) {
-					load_rom();
-					mode = ROM_RUNNING;
+				if (gb_config->boot_rom.valid && gb_config->game_rom.valid) {
+					load_rom(gb_config);
+					gb_config->state = ROM_RUNNING;
 				}
 				break;
 			case 1:
-				valid_boot_rom = false;
-				r = nfd_read_file(&boot_rom, dummy, &boot_rom_path);
+				gb_config->boot_rom.valid = false;
+				r = nfd_read_file(&gb_config->boot_rom.data, dummy,
+						  &gb_config->boot_rom.path);
 				if (r == 0) {
-					valid_boot_rom = true;
-					update_or_add_pair(CACHE_FILE, "boot_rom", boot_rom_path);
+					gb_config->boot_rom.valid = true;
+					update_or_add_pair(gb_config->cache_file, "boot_rom",
+							   gb_config->boot_rom.path);
 				}
 				break;
 			case 2:
-				valid_game_rom = false;
-				r = nfd_read_file(&game_rom, dummy, &game_rom_path);
+				gb_config->game_rom.valid = false;
+				r = nfd_read_file(&gb_config->game_rom.data, dummy,
+						  &gb_config->game_rom.path);
 				if (r == 0) {
-					valid_game_rom = true;
-					update_or_add_pair(CACHE_FILE, "game_rom", game_rom_path);
+					gb_config->game_rom.valid = true;
+					update_or_add_pair(gb_config->cache_file, "game_rom",
+							   gb_config->game_rom.path);
 				}
 				break;
 			}
@@ -298,33 +282,34 @@ void main_menu_input(SDL_Event *event)
 	}
 }
 
-void pause_menu_input(SDL_Event *event)
+void pause_menu_input(gb_config_t *gb_config, SDL_Event *event)
 {
 	int r = 0;
 	switch (event->type) {
 	case SDL_KEYDOWN: {
 		switch (event->key.keysym.sym) {
 		case SDLK_UP:
-			selectedOption2--;
-			if (selectedOption2 < 0) {
-				selectedOption2 = PAUSE_MENU_OPTIONS - 1;
+			gb_config->pause_menu.cursor--;
+			if (gb_config->pause_menu.cursor < 0) {
+				gb_config->pause_menu.cursor = gb_config->pause_menu.size - 1;
 			}
 			break;
 		case SDLK_DOWN:
-			selectedOption2++;
-			if (selectedOption2 >= PAUSE_MENU_OPTIONS) {
-				selectedOption2 = 0;
+			gb_config->pause_menu.cursor++;
+			if (gb_config->pause_menu.cursor >= gb_config->pause_menu.size) {
+				gb_config->pause_menu.cursor = 0;
 			}
 			break;
 		case SDLK_RETURN:
-			printf("Option %d selected!\n", selectedOption2 + 1);
+			LOG_DBG("Pause Menu Option: %d selected!",
+				gb_config->pause_menu.cursor + 1);
 
-			switch (selectedOption2) {
+			switch (gb_config->pause_menu.cursor) {
 			case 0:
-				mode = ROM_RUNNING;
+				gb_config->state = ROM_RUNNING;
 				break;
 			case 1:
-				mode = MAIN_MENU;
+				gb_config->state = MAIN_MENU;
 				break;
 			}
 
@@ -334,7 +319,7 @@ void pause_menu_input(SDL_Event *event)
 	}
 }
 
-static void update_input(SDL_Window *window, int *window_width, int *window_height)
+static void update_input(gb_config_t *gb_config)
 {
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -345,38 +330,39 @@ static void update_input(SDL_Window *window, int *window_width, int *window_heig
 
 		if (event.type == SDL_WINDOWEVENT) {
 			if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-				SDL_GetWindowSize(window, window_width, window_height);
+				SDL_GetWindowSize(gb_config->av.window, &gb_config->av.window_width,
+						  &gb_config->av.window_height);
 				break;
 			}
 		}
 
-		if (mode == ROM_RUNNING) {
-			rom_running_input(&event);
-		} else if (mode == MAIN_MENU) {
-			main_menu_input(&event);
-		} else if (mode == PAUSE_MENU) {
-			pause_menu_input(&event);
+		if (gb_config->state == ROM_RUNNING) {
+			rom_running_input(gb_config, &event);
+		} else if (gb_config->state == MAIN_MENU) {
+			main_menu_input(gb_config, &event);
+		} else if (gb_config->state == PAUSE_MENU) {
+			pause_menu_input(gb_config, &event);
 		}
 	}
 }
 
-void display_fps(SDL_Window *window)
+void display_fps(gb_av_t *gb_av)
 {
-	static uint32_t frameCount = 0;
-	static uint32_t lastTime = 0;
+	static uint32_t frame_count = 0;
+	static uint32_t last_time = 0;
 	static uint32_t fps = 0;
 	static char title[100];
 
-	frameCount++;
-	uint32_t currentTime = SDL_GetTicks();
-	if (currentTime > lastTime + 1000) {
-		fps = frameCount;
-		frameCount = 0;
-		lastTime = currentTime;
+	frame_count++;
+	uint32_t current_time = SDL_GetTicks();
+	if (current_time > last_time + 1000) {
+		fps = frame_count;
+		frame_count = 0;
+		last_time = current_time;
 
 		// Update window title with FPS
 		snprintf(title, 100, "FPS: %d", fps);
-		SDL_SetWindowTitle(window, title);
+		SDL_SetWindowTitle(gb_av->window, title);
 	}
 }
 
@@ -398,7 +384,7 @@ uint8_t controls_joypad(uint8_t *ucJoypadSELdir, uint8_t *ucJoypadSELbut)
 	return 0xC0 | (0xF ^ mask) | (*ucJoypadSELbut | *ucJoypadSELdir);
 }
 
-void menu_init(void)
+void menu_init(gb_config_t *gb_config)
 {
 	int r = 0;
 	size_t dummy_temp;
@@ -406,24 +392,26 @@ void menu_init(void)
 	if (TTF_Init() == -1) {
 		LOG_ERR("SDL_ttf could not initialize! TTF_Error: %s", TTF_GetError());
 	}
-	font = TTF_OpenFont(FONT_PATH, MENU_FONT_SIZE);
-	if (font == NULL) {
+	gb_config->font.ttf = TTF_OpenFont(gb_config->font.path, gb_config->font.size);
+	if (gb_config->font.ttf == NULL) {
 		LOG_ERR("Failed to load font! SDL_ttf Error: %s", TTF_GetError());
 	}
 
-	boot_rom_path = find_value_for_name(CACHE_FILE, "boot_rom");
-	if (boot_rom_path != NULL) {
-		r = read_file_into_buffer(boot_rom_path, &boot_rom, dummy);
+	gb_config->boot_rom.path = find_value_for_name(gb_config->cache_file, "boot_rom");
+	if (gb_config->boot_rom.path != NULL) {
+		r = read_file_into_buffer(gb_config->boot_rom.path, &gb_config->boot_rom.data,
+					  dummy);
 		if (r == 0) {
-			valid_boot_rom = true;
+			gb_config->boot_rom.valid = true;
 		}
 	}
 
-	game_rom_path = find_value_for_name(CACHE_FILE, "game_rom");
-	if (game_rom_path != NULL) {
-		r = read_file_into_buffer(game_rom_path, &game_rom, dummy);
+	gb_config->game_rom.path = find_value_for_name(gb_config->cache_file, "game_rom");
+	if (gb_config->game_rom.path != NULL) {
+		r = read_file_into_buffer(gb_config->game_rom.path, &gb_config->game_rom.data,
+					  dummy);
 		if (r == 0) {
-			valid_game_rom = true;
+			gb_config->game_rom.valid = true;
 		}
 	}
 }
@@ -445,25 +433,25 @@ void audio_init(void)
 	SDL_PauseAudio(0);
 }
 
-int init(SDL_Window **window, SDL_Renderer **renderer, SDL_Texture **texture, int window_width,
-	 int window_height)
+int init(gb_config_t *gb_config)
 {
 	SDL_Init(SDL_INIT_VIDEO);
 
-	*window = SDL_CreateWindow("Knowboy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-				   window_width, window_height, SDL_WINDOW_RESIZABLE);
+	gb_config->av.window = SDL_CreateWindow("Knowboy", SDL_WINDOWPOS_UNDEFINED,
+						SDL_WINDOWPOS_UNDEFINED, gb_config->av.window_width,
+						gb_config->av.window_height, SDL_WINDOW_RESIZABLE);
 
-	*renderer = SDL_CreateRenderer(*window, -1,
-				       SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	gb_config->av.renderer = SDL_CreateRenderer(
+		gb_config->av.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-	*texture =
-		SDL_CreateTexture(*renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-				  GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT);
+	gb_config->av.texture = SDL_CreateTexture(gb_config->av.renderer, SDL_PIXELFORMAT_ARGB8888,
+						  SDL_TEXTUREACCESS_STREAMING, GAMEBOY_SCREEN_WIDTH,
+						  GAMEBOY_SCREEN_HEIGHT);
 
-	menu_init();
+	menu_init(gb_config);
 
-	SDL_SetRenderDrawColor(*renderer, 0, 0, 0, 255);
-	SDL_RenderClear(*renderer);
+	SDL_SetRenderDrawColor(gb_config->av.renderer, 0, 0, 0, 255);
+	SDL_RenderClear(gb_config->av.renderer);
 
 	if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear")) {
 		LOG_ERR("Warning: Linear texture filtering not enabled!");
@@ -480,18 +468,18 @@ int init(SDL_Window **window, SDL_Renderer **renderer, SDL_Texture **texture, in
 	return 0;
 }
 
-int load_rom(void)
+int load_rom(gb_config_t *gb_config)
 {
 	SDL_PauseAudio(0);
 	gb_cpu_init();
 	gb_ppu_init();
-	gb_memory_init(boot_rom, game_rom);
+	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data);
 	gb_memory_set_control_function(controls_joypad);
 	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
 	return 0;
 }
 
-int run_rom(void)
+int run_rom(gb_config_t *gb_config)
 {
 	static int Tstates = 0;
 	audio_buf_t buf;
@@ -512,126 +500,158 @@ int run_rom(void)
 	return 0;
 }
 
-void render_main_menu(SDL_Renderer *renderer, int window_width)
+void render_menu(gb_config_t *gb_config, gb_menu_t *gb_menu)
 {
-	SDL_SetRenderDrawColor(renderer, COLOR_4_R, COLOR_4_G, COLOR_1_B, COLOR_4_A);
-	SDL_RenderClear(renderer);
+	SDL_SetRenderDrawColor(gb_config->av.renderer, COLOR_4_R, COLOR_4_G, COLOR_1_B, COLOR_4_A);
+	SDL_RenderClear(gb_config->av.renderer);
 
 	int y = 100;
-	for (int i = 0; i < MAIN_MENU_OPTIONS; i++) {
-		SDL_Color color = (i == selectedOption) ? selectedColor : normalColor;
-		SDL_Surface *surface = TTF_RenderText_Solid(font, main_menu_texts[i], color);
-		SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-		int textWidth = surface->w;
-		int textHeight = surface->h;
+	for (int i = 0; i < gb_menu->size; i++) {
+		SDL_Color color = (i == gb_menu->cursor) ? gb_config->font.select_color
+							 : gb_config->font.default_color;
+		SDL_Surface *surface =
+			TTF_RenderText_Solid(gb_config->font.ttf, gb_menu->options[i], color);
+		SDL_Texture *texture =
+			SDL_CreateTextureFromSurface(gb_config->av.renderer, surface);
+		int text_width = surface->w;
+		int text_height = surface->h;
 
-		SDL_Rect renderQuad = {(window_width - textWidth) / 2, y, textWidth, textHeight};
-		SDL_RenderCopy(renderer, texture, NULL, &renderQuad);
+		SDL_Rect render_quad = {(gb_config->av.window_width - text_width) / 2, y,
+					text_width, text_height};
+		SDL_RenderCopy(gb_config->av.renderer, texture, NULL, &render_quad);
 
 		SDL_DestroyTexture(texture);
 		SDL_FreeSurface(surface);
 
 		y += 50;
 	}
-	SDL_RenderPresent(renderer);
+	SDL_RenderPresent(gb_config->av.renderer);
 }
 
-void render_pause_menu(SDL_Renderer *renderer, int window_width)
+void render_main_menu(gb_config_t *gb_config)
 {
-	SDL_SetRenderDrawColor(renderer, COLOR_4_R, COLOR_4_G, COLOR_1_B, COLOR_4_A);
-	SDL_RenderClear(renderer);
-
-	int y = 100;
-	for (int i = 0; i < PAUSE_MENU_OPTIONS; i++) {
-		SDL_Color color = (i == selectedOption2) ? selectedColor : normalColor;
-		SDL_Surface *surface = TTF_RenderText_Solid(font, pause_menu_texts[i], color);
-		SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-		int textWidth = surface->w;
-		int textHeight = surface->h;
-
-		SDL_Rect renderQuad = {(window_width - textWidth) / 2, y, textWidth, textHeight};
-		SDL_RenderCopy(renderer, texture, NULL, &renderQuad);
-
-		SDL_DestroyTexture(texture);
-		SDL_FreeSurface(surface);
-
-		y += 50;
-	}
-	SDL_RenderPresent(renderer);
+	render_menu(gb_config, &gb_config->main_menu);
 }
 
-void render_frame_buffer(SDL_Renderer *renderer, SDL_Texture *texture, int window_width,
-			 int window_height, float aspect_ratio)
+void render_pause_menu(gb_config_t *gb_config)
+{
+	render_menu(gb_config, &gb_config->pause_menu);
+}
+
+void render_frame_buffer(gb_av_t *gb_av)
 {
 	int new_width;
 	int new_height;
-	SDL_Rect srcRect = {0, 0, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT};
+	SDL_Rect src_rect = {0, 0, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT};
 
-	SDL_UpdateTexture(texture, NULL, framebuffer, GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
+	SDL_UpdateTexture(gb_av->texture, NULL, framebuffer,
+			  GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
 
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black color
-	SDL_RenderClear(renderer);
+	SDL_SetRenderDrawColor(gb_av->renderer, 0, 0, 0, 255); // Black color
+	SDL_RenderClear(gb_av->renderer);
 
-	if (window_width / aspect_ratio <= window_height) {
+	if (gb_av->window_width / gb_av->aspect_ratio <= gb_av->window_height) {
 		// Window is taller than the image
-		new_width = window_width;
-		new_height = (int)(window_width / aspect_ratio);
+		new_width = gb_av->window_width;
+		new_height = (int)(gb_av->window_width / gb_av->aspect_ratio);
 	} else {
 		// Window is wider than the image
-		new_height = window_height;
-		new_width = (int)(window_height * aspect_ratio);
+		new_height = gb_av->window_height;
+		new_width = (int)(gb_av->window_height * gb_av->aspect_ratio);
 	}
 
-	SDL_Rect dstRect = {(window_width - new_width) / 2, (window_height - new_height) / 2,
-			    new_width, new_height};
+	SDL_Rect dstRect = {(gb_av->window_width - new_width) / 2,
+			    (gb_av->window_height - new_height) / 2, new_width, new_height};
 
-	SDL_RenderCopy(renderer, texture, &srcRect, &dstRect);
-	SDL_RenderPresent(renderer);
+	SDL_RenderCopy(gb_av->renderer, gb_av->texture, &src_rect, &dstRect);
+	SDL_RenderPresent(gb_av->renderer);
 }
 
-void app_close(SDL_Window *window, SDL_Renderer *renderer, SDL_Texture *texture)
+void app_close(gb_av_t *gb_av)
 {
 	NFD_Quit();
-	SDL_DestroyTexture(texture);
-	SDL_DestroyWindow(window);
-	SDL_DestroyRenderer(renderer);
+	SDL_DestroyTexture(gb_av->texture);
+	SDL_DestroyWindow(gb_av->window);
+	SDL_DestroyRenderer(gb_av->renderer);
 	SDL_Quit();
 }
 
 int main(void)
 {
-	SDL_Window *window = NULL;
-	SDL_Renderer *renderer = NULL;
-	SDL_Texture *texture = NULL;
-	int window_width = GAMEBOY_SCREEN_WIDTH * 3;
-	int window_height = GAMEBOY_SCREEN_HEIGHT * 3;
-	float aspect_ratio = (float)GAMEBOY_SCREEN_WIDTH / (float)GAMEBOY_SCREEN_HEIGHT;
+	gb_config_t gb_config = {
+		.av =
+			{
+				.enable = true,
+				.window = NULL,
+				.renderer = NULL,
+				.texture = NULL,
+				.window_width = GAMEBOY_SCREEN_WIDTH * 3,
+				.window_height = GAMEBOY_SCREEN_HEIGHT * 3,
+				.aspect_ratio =
+					(float)GAMEBOY_SCREEN_WIDTH / (float)GAMEBOY_SCREEN_HEIGHT,
+			},
+		.font =
+			{
+				.ttf = NULL,
+				.path = "resources/GameBoy.ttf",
+				.size = 24,
+				.select_color = {COLOR_1_R, COLOR_1_G, COLOR_1_B},
+				.default_color = {COLOR_3_R, COLOR_3_G, COLOR_3_B},
+			},
+		.main_menu =
+			{
+				.options = {"Start Game", "Load Boot ROM", "Load ROM"},
+				.size = 3,
+				.cursor = 0,
+			},
+		.pause_menu =
+			{
+				.options = {"Resume Game", "Return to Menu"},
+				.size = 2,
+				.cursor = 0,
+			},
+		.game_rom =
+			{
+				.data = NULL,
+				.path = NULL,
+				.valid = false,
+			},
+		.boot_rom =
+			{
+				.data = NULL,
+				.path = NULL,
+				.valid = false,
+			},
+		.state = MAIN_MENU,
+		.boot_skip = false,
+		.cache_file = "cache.txt",
+	};
 
-	if (init(&window, &renderer, &texture, window_width, window_height) != 0) {
+	if (init(&gb_config) != 0) {
 		LOG_ERR("Failed to initialize emulator");
-		app_close(window, renderer, texture);
+		app_close(&gb_config.av);
 		exit(1);
 	}
 
 	while (1) {
 
-		display_fps(window);
-		update_input(window, &window_width, &window_height);
-		switch (mode) {
+		display_fps(&gb_config.av);
+		update_input(&gb_config);
+
+		switch (gb_config.state) {
 		case MAIN_MENU:
-			render_main_menu(renderer, window_width);
+			render_main_menu(&gb_config);
 			break;
 		case PAUSE_MENU:
-			render_pause_menu(renderer, window_width);
+			render_pause_menu(&gb_config);
 			break;
 		case ROM_RUNNING:
-			run_rom();
-			render_frame_buffer(renderer, texture, window_width, window_height,
-					    aspect_ratio);
+			run_rom(&gb_config);
+			render_frame_buffer(&gb_config.av);
 			break;
 		}
 	}
 
-	app_close(window, renderer, texture);
+	app_close(&gb_config.av);
 	return 0;
 }
