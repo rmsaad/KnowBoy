@@ -95,6 +95,8 @@ int update_or_add_pair(const char *file_path, const char *name, const char *valu
 
 int read_file_into_buffer(const char *file_path, char **buffer, size_t *file_size)
 {
+	size_t file_sz;
+
 	FILE *file = fopen(file_path, "rb");
 	if (file == NULL) {
 		LOG_ERR("Error: Unable to open file %s", file_path);
@@ -102,19 +104,23 @@ int read_file_into_buffer(const char *file_path, char **buffer, size_t *file_siz
 	}
 
 	fseek(file, 0, SEEK_END);
-	*file_size = ftell(file);
+	file_sz = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	*buffer = (char *)malloc(*file_size);
+	*buffer = (char *)malloc(file_sz);
 	if (*buffer == NULL) {
 		LOG_ERR("Memory allocation failed");
 		fclose(file);
 		return -2;
 	}
 
-	fread(*buffer, 1, *file_size, file);
+	fread(*buffer, 1, file_sz, file);
 	fclose(file);
-	LOG_INF("File size: %zu bytes", *file_size);
+	LOG_INF("File size: %zu bytes", file_sz);
+
+	if (file_size != NULL) {
+		*file_size = file_sz;
+	}
 
 	return 0;
 }
@@ -222,8 +228,6 @@ void rom_running_input(gb_config_t *gb_config, SDL_Event *event)
 void main_menu_input(gb_config_t *gb_config, SDL_Event *event)
 {
 	int r = 0;
-	size_t dummy_temp;
-	size_t *dummy = &dummy_temp;
 	switch (event->type) {
 	case SDL_KEYDOWN: {
 		switch (event->key.keysym.sym) {
@@ -251,7 +255,7 @@ void main_menu_input(gb_config_t *gb_config, SDL_Event *event)
 				break;
 			case 1:
 				gb_config->boot_rom.valid = false;
-				r = nfd_read_file(&gb_config->boot_rom.data, dummy,
+				r = nfd_read_file(&gb_config->boot_rom.data, NULL,
 						  &gb_config->boot_rom.path);
 				if (r == 0) {
 					gb_config->boot_rom.valid = true;
@@ -261,7 +265,7 @@ void main_menu_input(gb_config_t *gb_config, SDL_Event *event)
 				break;
 			case 2:
 				gb_config->game_rom.valid = false;
-				r = nfd_read_file(&gb_config->game_rom.data, dummy,
+				r = nfd_read_file(&gb_config->game_rom.data, NULL,
 						  &gb_config->game_rom.path);
 				if (r == 0) {
 					gb_config->game_rom.valid = true;
@@ -382,8 +386,6 @@ uint8_t controls_joypad(uint8_t *ucJoypadSELdir, uint8_t *ucJoypadSELbut)
 void menu_init(gb_config_t *gb_config)
 {
 	int r = 0;
-	size_t dummy_temp;
-	size_t *dummy = &dummy_temp;
 	if (TTF_Init() == -1) {
 		LOG_ERR("SDL_ttf could not initialize! TTF_Error: %s", TTF_GetError());
 	}
@@ -395,7 +397,7 @@ void menu_init(gb_config_t *gb_config)
 	gb_config->boot_rom.path = find_value_for_name(gb_config->cache_file, "boot_rom");
 	if (gb_config->boot_rom.path != NULL) {
 		r = read_file_into_buffer(gb_config->boot_rom.path, &gb_config->boot_rom.data,
-					  dummy);
+					  NULL);
 		if (r == 0) {
 			gb_config->boot_rom.valid = true;
 		}
@@ -404,7 +406,7 @@ void menu_init(gb_config_t *gb_config)
 	gb_config->game_rom.path = find_value_for_name(gb_config->cache_file, "game_rom");
 	if (gb_config->game_rom.path != NULL) {
 		r = read_file_into_buffer(gb_config->game_rom.path, &gb_config->game_rom.data,
-					  dummy);
+					  NULL);
 		if (r == 0) {
 			gb_config->game_rom.valid = true;
 		}
