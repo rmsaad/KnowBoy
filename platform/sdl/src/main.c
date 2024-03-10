@@ -26,10 +26,7 @@ static uint32_t framebuffer[GAMEBOY_SCREEN_HEIGHT * GAMEBOY_SCREEN_WIDTH] = {0};
 
 char *find_value_for_name(const char *file_path, const char *name)
 {
-	FILE *file = fopen(file_path, "r");
-	if (file == NULL) {
-		return NULL;
-	}
+	FILE *file = fopen(file_path, "ab+");
 
 	char line[MAX_LINE_LENGTH];
 	char *value = NULL;
@@ -51,50 +48,48 @@ char *find_value_for_name(const char *file_path, const char *name)
 int update_or_add_pair(const char *file_path, const char *name, const char *value)
 {
 
+	bool needs_update = false;
 	char *existing_value = find_value_for_name(file_path, name);
-	int needs_update = existing_value != NULL && strcmp(existing_value, value) != 0;
 
-	if (existing_value == NULL || needs_update) {
-		FILE *file = fopen(file_path, "r+");
-		if (file == NULL) {
-			free(existing_value);
-			return -1;
-		}
+	if (existing_value == NULL || strcmp(existing_value, value) != 0) {
+		needs_update = true;
+	}
 
-		char temp_file_path[MAX_LINE_LENGTH];
-		snprintf(temp_file_path, sizeof(temp_file_path), "%s.tmp", file_path);
-		FILE *temp_file = fopen(temp_file_path, "w+");
-		if (temp_file == NULL) {
-			fclose(file);
-			free(existing_value);
-			return -1;
-		}
+	if (existing_value != NULL) {
+		free(existing_value);
+	}
 
-		if (needs_update) {
-			rewind(file);
-			char line[MAX_LINE_LENGTH];
-			while (fgets(line, sizeof(line), file) != NULL) {
-				char current_name[MAX_LINE_LENGTH];
-				if (sscanf(line, "%[^=]", current_name) == 1 &&
-				    strcmp(current_name, name) != 0) {
-					fputs(line, temp_file);
-				}
+	FILE *file = fopen(file_path, "r+");
+
+	char temp_file_path[MAX_LINE_LENGTH];
+	snprintf(temp_file_path, sizeof(temp_file_path), "%s.tmp", file_path);
+	FILE *temp_file = fopen(temp_file_path, "w+");
+	if (temp_file == NULL) {
+		return -1;
+	}
+
+	if (needs_update) {
+		rewind(file);
+		char line[MAX_LINE_LENGTH];
+		while (fgets(line, sizeof(line), file) != NULL) {
+			char current_name[MAX_LINE_LENGTH];
+			if (sscanf(line, "%[^=]", current_name) == 1 &&
+			    strcmp(current_name, name) != 0) {
+				fputs(line, temp_file);
 			}
-			fprintf(temp_file, "%s=%s\n", name, value);
-		} else {
-			fprintf(temp_file, "%s=%s\n", name, value);
 		}
+		fprintf(temp_file, "%s=%s\n", name, value);
 
 		fclose(file);
 		fclose(temp_file);
-
 		if (remove(file_path) != 0 || rename(temp_file_path, file_path) != 0) {
-			free(existing_value);
 			return -1;
 		}
+	} else {
+		fclose(file);
+		fclose(temp_file);
 	}
 
-	free(existing_value);
 	return 0;
 }
 
