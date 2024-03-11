@@ -248,7 +248,8 @@ void main_menu_input(gb_config_t *gb_config, SDL_Event *event)
 
 			switch (gb_config->main_menu.cursor) {
 			case 0:
-				if (gb_config->boot_rom.valid && gb_config->game_rom.valid) {
+				if ((gb_config->boot_rom.valid || gb_config->boot_skip) &&
+				    gb_config->game_rom.valid) {
 					load_rom(gb_config);
 					gb_config->state = ROM_RUNNING;
 				}
@@ -409,6 +410,16 @@ void menu_init(gb_config_t *gb_config)
 					  NULL);
 		if (r == 0) {
 			gb_config->game_rom.valid = true;
+		}
+	}
+
+	if (gb_config->menu_skip == true) {
+		if ((gb_config->boot_rom.valid || gb_config->boot_skip) &&
+		    gb_config->game_rom.valid) {
+			load_rom(gb_config);
+			gb_config->state = ROM_RUNNING;
+		} else {
+			LOG_ERR("Can't Skip menu, bad boot/game rom selection");
 		}
 	}
 }
@@ -573,7 +584,48 @@ void app_close(gb_av_t *gb_av)
 	SDL_Quit();
 }
 
-int main(void)
+int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
+{
+	int r = 0;
+	bool start = false;
+	FILE *file;
+	for (int i = 1; i < argc; i++) {
+
+		if (strcmp(argv[i], "--bootrom") == 0 && i + 1 < argc) {
+			char *boot_rom = argv[++i];
+			if ((file = fopen(boot_rom, "r"))) {
+				update_or_add_pair(gb_config->cache_file, "boot_rom", boot_rom);
+				fclose(file);
+			} else {
+				LOG_ERR("Invalid boot rom argument");
+				exit(1);
+			}
+
+		} else if (strcmp(argv[i], "--gamerom") == 0 && i + 1 < argc) {
+			char *game_rom = argv[++i];
+			if ((file = fopen(game_rom, "r"))) {
+				update_or_add_pair(gb_config->cache_file, "game_rom", game_rom);
+				fclose(file);
+			} else {
+				LOG_ERR("Invalid game rom argument");
+				exit(1);
+			}
+
+		} else if (strcmp(argv[i], "--start") == 0) {
+			gb_config->menu_skip = true;
+
+		} else if (strcmp(argv[i], "--noninteractive") == 0) {
+			// TODO: implement this
+		} else {
+			LOG_ERR("Error: Unrecognized argument '%s'\n", argv[i]);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
 {
 	gb_config_t gb_config = {
 		.av =
@@ -620,9 +672,15 @@ int main(void)
 				.valid = false,
 			},
 		.state = MAIN_MENU,
+		.menu_skip = false,
 		.boot_skip = false,
 		.cache_file = "cache.txt",
 	};
+
+	if (parse_arguments(argc, argv, &gb_config) != 0) {
+		app_close(&gb_config.av);
+		exit(1);
+	}
 
 	if (init(&gb_config) != 0) {
 		LOG_ERR("Failed to initialize emulator");

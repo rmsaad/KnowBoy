@@ -51,6 +51,7 @@ typedef struct {
 	gb_rom_t game_rom;
 	gb_rom_t boot_rom;
 	gb_state_t state;
+	bool menu_skip;
 	bool boot_skip;
 	const char *cache_file;
 } gb_config_t;
