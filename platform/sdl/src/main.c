@@ -481,7 +481,7 @@ int load_rom(gb_config_t *gb_config)
 	SDL_PauseAudio(0);
 	gb_cpu_init();
 	gb_ppu_init();
-	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data);
+	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
 	gb_memory_set_control_function(controls_joypad);
 	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
 	return 0;
@@ -593,7 +593,9 @@ int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
 
 		if (strcmp(argv[i], "--bootrom") == 0 && i + 1 < argc) {
 			char *boot_rom = argv[++i];
-			if ((file = fopen(boot_rom, "r"))) {
+			if (strcmp(boot_rom, "none") == 0 || strcmp(boot_rom, "None") == 0) {
+				gb_config->boot_skip = true;
+			} else if ((file = fopen(boot_rom, "r"))) {
 				update_or_add_pair(gb_config->cache_file, "boot_rom", boot_rom);
 				fclose(file);
 			} else {

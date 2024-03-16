@@ -68,27 +68,53 @@ void gb_memory_set_op(uint8_t op)
  * being pressed. The IF register should read 0xE1 to set the appropriate flags.
  * @return Nothing
  */
-void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom)
+void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_skip)
 {
 	// memset(mem.ram, 0, 0xFFFF);
 	gbc_mbc_init();
 	rom = game_rom;
 	memset(&mem.ram[0], 0x00, 0xFFFF);
 	gb_memory_load(game_rom, 32768);
-	gb_memory_load(boot_rom, 256);
 	gb_mbc_set_controller_type(mem.ram[0x147]);
-	reg.PC = 0;
-	reg.AF = 0;
-	reg.BC = 0;
-	reg.DE = 0;
-	reg.HL = 0;
-	reg.SP = 0;
-	clock_mode = 0;
-	timer_stop_start = 0;
-	data_trans_flag = 0;
+	gb_memory_write(TAC_ADDR, 0xF8);
 	mem.ram[JOY_ADDR] = 0xCF;
 	mem.ram[IF_ADDR] = 0xE1;
-	gb_memory_write(TAC_ADDR, 0xF8);
+
+	if (boot_skip) {
+		mem.ram[LCDC_ADDR] = 0x91;
+		mem.ram[STAT_ADDR] = 0x01;
+		mem.ram[DIV_ADDR] = 0xAB;
+		mem.ram[NR11_ADDR] = 0x80;
+		mem.ram[NR12_ADDR] = 0xF3;
+		mem.ram[NR13_ADDR] = 0xC1;
+		mem.ram[NR14_ADDR] = 0x87;
+		mem.ram[NR50_ADDR] = 0x77;
+		mem.ram[NR51_ADDR] = 0xF3;
+		mem.ram[NR52_ADDR] = 0xF1;
+		mem.ram[LY_ADDR] = 0x99;
+		mem.ram[BGP_ADDR] = 0xFC;
+		mem.ram[BOOT_EN_ADDR] = 0x01;
+		mem.ram[0xFFFA] = 0x39;
+		mem.ram[0xFFFB] = 0x01;
+		mem.ram[0xFFFC] = 0x2E;
+		reg.PC = 0x0100;
+		reg.AF = 0x01B0;
+		reg.BC = 0x0013;
+		reg.DE = 0x0008;
+		reg.HL = 0x014D;
+		reg.SP = 0xFFFE;
+	} else {
+		gb_memory_load(boot_rom, 256);
+		reg.PC = 0;
+		reg.AF = 0;
+		reg.BC = 0;
+		reg.DE = 0;
+		reg.HL = 0;
+		reg.SP = 0;
+		clock_mode = 0;
+		timer_stop_start = 0;
+		data_trans_flag = 0;
+	}
 }
 
 /**

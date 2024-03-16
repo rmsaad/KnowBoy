@@ -9,8 +9,10 @@
 #ifndef INCLUDE_GB_MEMORY_H_
 #define INCLUDE_GB_MEMORY_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+
 
 // ppu modes
 #define STAT_MODE_0 0 // HBLANK
@@ -295,6 +297,6 @@ void gb_memory_set_bit(uint16_t address, uint8_t bit);
 void gb_memory_reset_bit(uint16_t address, uint8_t bit);
 void gb_memory_print(void);
 void gb_memory_set_op(uint8_t op);
-void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom);
+void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_skip);
 
 #endif /* INCLUDE_GB_MEMORY_H_ */
