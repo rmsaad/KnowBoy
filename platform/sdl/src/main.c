@@ -386,13 +386,67 @@ uint8_t controls_joypad(uint8_t *ucJoypadSELdir, uint8_t *ucJoypadSELbut)
 
 void menu_init(gb_config_t *gb_config)
 {
-	int r = 0;
 	if (TTF_Init() == -1) {
 		LOG_ERR("SDL_ttf could not initialize! TTF_Error: %s", TTF_GetError());
 	}
 	gb_config->font.ttf = TTF_OpenFont(gb_config->font.path, gb_config->font.size);
 	if (gb_config->font.ttf == NULL) {
 		LOG_ERR("Failed to load font! SDL_ttf Error: %s", TTF_GetError());
+	}
+}
+
+void audio_init(void)
+{
+	SDL_setenv("SDL_AUDIODRIVER", "directsound", 1);
+	SDL_Init(SDL_INIT_AUDIO);
+
+	SDL_AudioSpec AudioSettings = {0};
+
+	AudioSettings.freq = 44100;
+	AudioSettings.format = AUDIO_S16SYS;
+	AudioSettings.channels = 2;
+	AudioSettings.samples = 739;
+
+	SDL_OpenAudio(&AudioSettings, 0);
+
+	SDL_PauseAudio(0);
+}
+
+int init(gb_config_t *gb_config)
+{
+	int r = 0;
+	if (gb_config->av.enable) {
+		SDL_Init(SDL_INIT_VIDEO);
+
+		gb_config->av.window =
+			SDL_CreateWindow("Knowboy", SDL_WINDOWPOS_UNDEFINED,
+					 SDL_WINDOWPOS_UNDEFINED, gb_config->av.window_width,
+					 gb_config->av.window_height, SDL_WINDOW_RESIZABLE);
+
+		gb_config->av.renderer =
+			SDL_CreateRenderer(gb_config->av.window, -1,
+					   SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+		gb_config->av.texture = SDL_CreateTexture(
+			gb_config->av.renderer, SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT);
+
+		menu_init(gb_config);
+
+		SDL_SetRenderDrawColor(gb_config->av.renderer, 0, 0, 0, 255);
+		SDL_RenderClear(gb_config->av.renderer);
+
+		if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear")) {
+			LOG_ERR("Warning: Linear texture filtering not enabled!");
+		}
+
+		/* init SDL audio */
+		audio_init();
+
+		/* initialize native file dialog */
+		if (NFD_Init() != NFD_OKAY) {
+			LOG_ERR("NFD failed to initialize ");
+		}
 	}
 
 	gb_config->boot_rom.path = find_value_for_name(gb_config->cache_file, "boot_rom");
@@ -422,63 +476,15 @@ void menu_init(gb_config_t *gb_config)
 			LOG_ERR("Can't Skip menu, bad boot/game rom selection");
 		}
 	}
-}
-
-void audio_init(void)
-{
-	SDL_setenv("SDL_AUDIODRIVER", "directsound", 1);
-	SDL_Init(SDL_INIT_AUDIO);
-
-	SDL_AudioSpec AudioSettings = {0};
-
-	AudioSettings.freq = 44100;
-	AudioSettings.format = AUDIO_S16SYS;
-	AudioSettings.channels = 2;
-	AudioSettings.samples = 739;
-
-	SDL_OpenAudio(&AudioSettings, 0);
-
-	SDL_PauseAudio(0);
-}
-
-int init(gb_config_t *gb_config)
-{
-	SDL_Init(SDL_INIT_VIDEO);
-
-	gb_config->av.window = SDL_CreateWindow("Knowboy", SDL_WINDOWPOS_UNDEFINED,
-						SDL_WINDOWPOS_UNDEFINED, gb_config->av.window_width,
-						gb_config->av.window_height, SDL_WINDOW_RESIZABLE);
-
-	gb_config->av.renderer = SDL_CreateRenderer(
-		gb_config->av.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	gb_config->av.texture = SDL_CreateTexture(gb_config->av.renderer, SDL_PIXELFORMAT_ARGB8888,
-						  SDL_TEXTUREACCESS_STREAMING, GAMEBOY_SCREEN_WIDTH,
-						  GAMEBOY_SCREEN_HEIGHT);
-
-	menu_init(gb_config);
-
-	SDL_SetRenderDrawColor(gb_config->av.renderer, 0, 0, 0, 255);
-	SDL_RenderClear(gb_config->av.renderer);
-
-	if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear")) {
-		LOG_ERR("Warning: Linear texture filtering not enabled!");
-	}
-
-	/* init SDL audio */
-	audio_init();
-
-	/* initialize native file dialog */
-	if (NFD_Init() != NFD_OKAY) {
-		LOG_ERR("NFD failed to initialize ");
-	}
 
 	return 0;
 }
 
 int load_rom(gb_config_t *gb_config)
 {
-	SDL_PauseAudio(0);
+	if (gb_config->av.enable) {
+		SDL_PauseAudio(0);
+	}
 	gb_cpu_init();
 	gb_ppu_init();
 	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
@@ -503,37 +509,42 @@ int run_rom(gb_config_t *gb_config)
 
 	Tstates -= 70224;
 
-	SDL_QueueAudio(1, buf.buffer, (*buf.len) * 2);
+	if (gb_config->av.enable) {
+		SDL_QueueAudio(1, buf.buffer, (*buf.len) * 2);
+	}
 	*buf.len = 0;
 	return 0;
 }
 
 void render_menu(gb_config_t *gb_config, gb_menu_t *gb_menu)
 {
-	SDL_SetRenderDrawColor(gb_config->av.renderer, COLOR_4_R, COLOR_4_G, COLOR_1_B, COLOR_4_A);
-	SDL_RenderClear(gb_config->av.renderer);
+	if (gb_config->av.enable) {
+		SDL_SetRenderDrawColor(gb_config->av.renderer, COLOR_4_R, COLOR_4_G, COLOR_1_B,
+				       COLOR_4_A);
+		SDL_RenderClear(gb_config->av.renderer);
 
-	int y = 100;
-	for (int i = 0; i < gb_menu->size; i++) {
-		SDL_Color color = (i == gb_menu->cursor) ? gb_config->font.select_color
-							 : gb_config->font.default_color;
-		SDL_Surface *surface =
-			TTF_RenderText_Solid(gb_config->font.ttf, gb_menu->options[i], color);
-		SDL_Texture *texture =
-			SDL_CreateTextureFromSurface(gb_config->av.renderer, surface);
-		int text_width = surface->w;
-		int text_height = surface->h;
+		int y = 100;
+		for (int i = 0; i < gb_menu->size; i++) {
+			SDL_Color color = (i == gb_menu->cursor) ? gb_config->font.select_color
+								 : gb_config->font.default_color;
+			SDL_Surface *surface = TTF_RenderText_Solid(gb_config->font.ttf,
+								    gb_menu->options[i], color);
+			SDL_Texture *texture =
+				SDL_CreateTextureFromSurface(gb_config->av.renderer, surface);
+			int text_width = surface->w;
+			int text_height = surface->h;
 
-		SDL_Rect render_quad = {(gb_config->av.window_width - text_width) / 2, y,
-					text_width, text_height};
-		SDL_RenderCopy(gb_config->av.renderer, texture, NULL, &render_quad);
+			SDL_Rect render_quad = {(gb_config->av.window_width - text_width) / 2, y,
+						text_width, text_height};
+			SDL_RenderCopy(gb_config->av.renderer, texture, NULL, &render_quad);
 
-		SDL_DestroyTexture(texture);
-		SDL_FreeSurface(surface);
+			SDL_DestroyTexture(texture);
+			SDL_FreeSurface(surface);
 
-		y += 50;
+			y += 50;
+		}
+		SDL_RenderPresent(gb_config->av.renderer);
 	}
-	SDL_RenderPresent(gb_config->av.renderer);
 }
 
 void render_main_menu(gb_config_t *gb_config)
@@ -550,38 +561,42 @@ void render_frame_buffer(gb_av_t *gb_av)
 {
 	int new_width;
 	int new_height;
-	SDL_Rect src_rect = {0, 0, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT};
+	if (gb_av->enable) {
+		SDL_Rect src_rect = {0, 0, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT};
 
-	SDL_UpdateTexture(gb_av->texture, NULL, framebuffer,
-			  GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
+		SDL_UpdateTexture(gb_av->texture, NULL, framebuffer,
+				  GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
 
-	SDL_SetRenderDrawColor(gb_av->renderer, 0, 0, 0, 255); // Black color
-	SDL_RenderClear(gb_av->renderer);
+		SDL_SetRenderDrawColor(gb_av->renderer, 0, 0, 0, 255); // Black color
+		SDL_RenderClear(gb_av->renderer);
 
-	if (gb_av->window_width / gb_av->aspect_ratio <= gb_av->window_height) {
-		// Window is taller than the image
-		new_width = gb_av->window_width;
-		new_height = (int)(gb_av->window_width / gb_av->aspect_ratio);
-	} else {
-		// Window is wider than the image
-		new_height = gb_av->window_height;
-		new_width = (int)(gb_av->window_height * gb_av->aspect_ratio);
+		if (gb_av->window_width / gb_av->aspect_ratio <= gb_av->window_height) {
+			// Window is taller than the image
+			new_width = gb_av->window_width;
+			new_height = (int)(gb_av->window_width / gb_av->aspect_ratio);
+		} else {
+			// Window is wider than the image
+			new_height = gb_av->window_height;
+			new_width = (int)(gb_av->window_height * gb_av->aspect_ratio);
+		}
+
+		SDL_Rect dstRect = {(gb_av->window_width - new_width) / 2,
+				    (gb_av->window_height - new_height) / 2, new_width, new_height};
+
+		SDL_RenderCopy(gb_av->renderer, gb_av->texture, &src_rect, &dstRect);
+		SDL_RenderPresent(gb_av->renderer);
 	}
-
-	SDL_Rect dstRect = {(gb_av->window_width - new_width) / 2,
-			    (gb_av->window_height - new_height) / 2, new_width, new_height};
-
-	SDL_RenderCopy(gb_av->renderer, gb_av->texture, &src_rect, &dstRect);
-	SDL_RenderPresent(gb_av->renderer);
 }
 
 void app_close(gb_av_t *gb_av)
 {
-	NFD_Quit();
-	SDL_DestroyTexture(gb_av->texture);
-	SDL_DestroyWindow(gb_av->window);
-	SDL_DestroyRenderer(gb_av->renderer);
-	SDL_Quit();
+	if (gb_av->enable) {
+		NFD_Quit();
+		SDL_DestroyTexture(gb_av->texture);
+		SDL_DestroyWindow(gb_av->window);
+		SDL_DestroyRenderer(gb_av->renderer);
+		SDL_Quit();
+	}
 }
 
 int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
@@ -617,7 +632,7 @@ int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
 			gb_config->menu_skip = true;
 
 		} else if (strcmp(argv[i], "--noninteractive") == 0) {
-			// TODO: implement this
+			gb_config->av.enable = false;
 		} else {
 			LOG_ERR("Error: Unrecognized argument '%s'\n", argv[i]);
 			return -1;
@@ -692,8 +707,10 @@ int main(int argc, char *argv[])
 
 	while (1) {
 
-		display_fps(&gb_config.av);
-		update_input(&gb_config);
+		if (gb_config.av.enable) {
+			display_fps(&gb_config.av);
+			update_input(&gb_config);
+		}
 
 		switch (gb_config.state) {
 		case MAIN_MENU:
