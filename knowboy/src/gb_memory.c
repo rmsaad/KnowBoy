@@ -176,6 +176,7 @@ void gb_memory_write(uint16_t address, uint8_t data)
 		else if (address == STC_ADDR) {
 			if (CHK_BIT(data, 7)) {
 				data_trans_flag = 1;
+				LOG_DBG("SER: %c", mem.ram[SB_ADDR]);
 			}
 			mem.ram[address] = data;
 			return;
