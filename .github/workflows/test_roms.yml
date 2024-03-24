@@ -1,0 +1,17 @@
+name: Test ROMs
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-run-test-roms:
+    runs-on: [self-hosted, Linux]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: CMake Configure (Release)
+        run: cmake -B ./platform/sdl/build ./platform/sdl -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build with Make (Release)
+        working-directory: ./platform/sdl/build
+        run: make
