@@ -25,15 +25,15 @@ jobs:
         working-directory: ./platform/sdl/build
         run: |
           timeout 60 bash -c \
-          '{
-            stdbuf -oL -eL ./Knowboy --bootrom none --gamerom ./test-roms/blargg/cpu_instrs/cpu_instrs.gb --start --noninteractive > output.log & pid=$!
-            while ! awk -F'DEBUG SER: ' '{if(NF>1) printf "%s", $2}' output.log | grep -q "Passed all tests"; do
+          '
+          stdbuf -oL -eL ./Knowboy --bootrom none --gamerom ./test-roms/blargg/cpu_instrs/cpu_instrs.gb --start --noninteractive > output.log & pid=$!
+          while ! awk -F"DEBUG SER: " '\''{if(NF>1) printf "%s", $2}'\'' output.log | grep -q "Passed all tests"; do
               sleep 1
               if ! kill -0 $pid 2>/dev/null; then
-                echo "Knowboy process ended unexpectedly."
-                exit 1
+              echo "Knowboy process ended unexpectedly."
+              exit 1
               fi
-            done
-            echo "Passed all CPU tests"
-            kill $pid && exit 0
-            } || { echo "Test output not detected within timeout period."; exit 1; }'
+          done
+          echo "Passed all CPU tests"
+          kill $pid && exit 0
+          ' || ( awk -F'DEBUG SER: ' '{if(NF>1) printf "%s", $2}' output.log; echo""; echo "Test output not detected within timeout period."; exit 1;)
