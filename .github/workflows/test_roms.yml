@@ -5,6 +5,22 @@ on:
 jobs:
   build-and-run-test-roms:
     runs-on: [self-hosted, Linux]
+
+    strategy:
+      matrix:
+        include:
+          - test_rom: "blargg/cpu_instrs/cpu_instrs.gb"
+            pass_criteria: "Passed all tests"
+            success_message: "Passed all CPU instruction tests"
+
+          - test_rom: "blargg/mem_timing/mem_timing.gb"
+            pass_criteria: "Passed all tests"
+            success_message: "Passed all memory timing tests"
+
+          - test_rom: "blargg/instr_timing/instr_timing.gb"
+            pass_criteria: "Passed"
+            success_message: "Passed CPU instruction timing test"
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -32,14 +48,14 @@ jobs:
         run: |
           timeout 60 bash -c \
           '
-          stdbuf -oL -eL ./Knowboy --bootrom none --gamerom ./test-roms/blargg/cpu_instrs/cpu_instrs.gb --start --noninteractive > output.log & pid=$!
-          while ! awk -F"DEBUG SER: " '\''{if(NF>1) printf "%s", $2}'\'' output.log | grep -q "Passed all tests"; do
+          stdbuf -oL -eL ./Knowboy --bootrom none --gamerom ./test-roms/${{ matrix.test_rom }} --start --noninteractive > output.log & pid=$!
+          while ! awk -F"DEBUG SER: " '\''{if(NF>1) printf "%s", $2}'\'' output.log | grep -q "${{ matrix.pass_criteria }}"; do
               sleep 1
               if ! kill -0 $pid 2>/dev/null; then
               echo "Knowboy process ended unexpectedly."
               exit 1
               fi
           done
-          echo "Passed all CPU tests"
+          echo "${{ matrix.success_message }}"
           kill $pid && exit 0
           ' || ( awk -F'DEBUG SER: ' '{if(NF>1) printf "%s", $2}' output.log; echo""; echo "Test output not detected within timeout period."; exit 1;)
