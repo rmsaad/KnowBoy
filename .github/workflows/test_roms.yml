@@ -25,7 +25,7 @@ jobs:
       - name: Download and Extract Test ROMs
         run: |
           curl -L https://github.com/c-sp/gameboy-test-roms/releases/download/v7.0/game-boy-test-roms-v7.0.zip -o test-roms.zip
-          unzip test-roms.zip -d ./platform/sdl/build/test-roms
+          unzip -o test-roms.zip -d ./platform/sdl/build/test-roms
 
       - name: Run Knowboy with Test ROM
         working-directory: ./platform/sdl/build
