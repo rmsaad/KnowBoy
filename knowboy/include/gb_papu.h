@@ -9,12 +9,10 @@
 #ifndef INCLUDE_GB_PAPU_H_
 #define INCLUDE_GB_PAPU_H_
 
-typedef struct {
-	uint16_t *buffer;
-	uint16_t *len;
-} audio_buf_t;
+#include <stdint.h>
 
-audio_buf_t gb_papu_step(void);
+void gb_papu_init(uint16_t *buf, uint16_t *buf_pos, uint16_t buf_size);
+void gb_papu_step(void);
 void gb_papu_trigger_ch1(void);
 void gb_papu_trigger_ch2(void);
 void gb_papu_trigger_ch3(void);

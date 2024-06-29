@@ -15,8 +15,8 @@
 #include <string.h>
 
 // Audio buffers
-uint16_t audio_buf[32768] = {0};
-uint16_t audio_buf_pos = 0;
+uint16_t *gb_papu_buf = NULL;
+uint16_t *gb_papu_buf_pos = NULL;
 
 const uint8_t duties[4][8] = {
 	{0, 0, 0, 0, 0, 0, 0, 1}, // 00
@@ -237,7 +237,14 @@ void gb_papu_step_ch4(void)
 	}
 }
 
-audio_buf_t gb_papu_step(void)
+void gb_papu_init(uint16_t *buf, uint16_t *buf_pos, uint16_t buf_size)
+{
+	gb_papu_buf = buf;
+	gb_papu_buf_pos = buf_pos;
+	memset(gb_papu_buf, 0x00, buf_size);
+}
+
+void gb_papu_step(void)
 {
 	uint8_t current_cylces = 4;
 
@@ -301,8 +308,8 @@ audio_buf_t gb_papu_step(void)
 		if (!--audio_freq_convert_factor) {
 			audio_freq_convert_factor = 95;
 
-			audio_buf[audio_buf_pos] = 0;
-			audio_buf[audio_buf_pos + 1] = 0;
+			gb_papu_buf[*gb_papu_buf_pos] = 0;
+			gb_papu_buf[*gb_papu_buf_pos + 1] = 0;
 
 			if (mem.ram[NR52_ADDR] & AUDIO_ON) {
 
@@ -313,14 +320,14 @@ audio_buf_t gb_papu_step(void)
 						   CH1_WAVE_DUTY_OFFSET;
 
 					if (mem.ram[NR51_ADDR] & CH1_LEFT) {
-						audio_buf[audio_buf_pos] =
+						gb_papu_buf[*gb_papu_buf_pos] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
 								 : 0);
 					}
 
 					if ((mem.ram[NR51_ADDR] & CH1_RIGHT)) {
-						audio_buf[audio_buf_pos + 1] =
+						gb_papu_buf[*gb_papu_buf_pos + 1] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
 								 : 0);
@@ -334,13 +341,13 @@ audio_buf_t gb_papu_step(void)
 						   CH2_WAVE_DUTY_OFFSET;
 
 					if (mem.ram[NR51_ADDR] & CH2_LEFT) {
-						audio_buf[audio_buf_pos] +=
+						gb_papu_buf[*gb_papu_buf_pos] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
 								 : 0);
 					}
 					if (mem.ram[NR51_ADDR] & CH2_RIGHT) {
-						audio_buf[audio_buf_pos + 1] +=
+						gb_papu_buf[*gb_papu_buf_pos + 1] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
 								 : 0);
@@ -367,11 +374,11 @@ audio_buf_t gb_papu_step(void)
 						wave = wave >> 4;
 
 					if (mem.ram[NR51_ADDR] & CH3_LEFT) {
-						audio_buf[audio_buf_pos] += wave;
+						gb_papu_buf[*gb_papu_buf_pos] += wave;
 					}
 
 					if (mem.ram[NR51_ADDR] & CH3_RIGHT) {
-						audio_buf[audio_buf_pos + 1] += wave;
+						gb_papu_buf[*gb_papu_buf_pos + 1] += wave;
 					}
 				}
 
@@ -380,29 +387,24 @@ audio_buf_t gb_papu_step(void)
 				    (mem.ram[NR42_ADDR] & (CH4_INITIAL_VOL + CH4_ENVELOPE_DIR))) {
 
 					if (mem.ram[NR51_ADDR] & CH4_LEFT) {
-						audio_buf[audio_buf_pos] +=
+						gb_papu_buf[*gb_papu_buf_pos] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
 					if (mem.ram[NR51_ADDR] & CH4_RIGHT) {
-						audio_buf[audio_buf_pos + 1] +=
+						gb_papu_buf[*gb_papu_buf_pos + 1] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
 				}
 
-				audio_buf[audio_buf_pos] <<=
+				gb_papu_buf[*gb_papu_buf_pos] <<=
 					((mem.ram[NR50_ADDR] & VOL_LEFT) >> VOL_LEFT_OFFSET);
 
-				audio_buf[audio_buf_pos + 1] <<=
+				gb_papu_buf[*gb_papu_buf_pos + 1] <<=
 					((mem.ram[NR50_ADDR] & VOL_RIGHT) >> VOL_RIGHT_OFFSET);
 			}
-			audio_buf_pos += 2;
+			*gb_papu_buf_pos += 2;
 		}
 	}
-
-	audio_buf_t buf;
-	buf.buffer = audio_buf;
-	buf.len = &audio_buf_pos;
-	return buf;
 }
 
 // TRIGGER EVENTS

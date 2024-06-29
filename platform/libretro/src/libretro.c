@@ -17,6 +17,7 @@
 #include "libretro.h"
 #include "logging.h"
 
+#define AUDIO_BUF_SIZE	   32768
 #define VIDEO_WIDTH	   GAMEBOY_SCREEN_WIDTH
 #define VIDEO_HEIGHT	   GAMEBOY_SCREEN_HEIGHT
 #define VIDEO_PITCH	   GAMEBOY_SCREEN_WIDTH
@@ -29,6 +30,8 @@ static uint8_t *frame_buf;
 static bool use_audio_cb;
 char retro_base_directory[4096];
 char retro_game_path[4096];
+uint16_t audio_buf[AUDIO_BUF_SIZE];
+uint16_t audio_buf_pos;
 
 static retro_environment_t environ_cb;
 
@@ -180,13 +183,6 @@ static void check_variables(void)
 
 static void audio_callback(void)
 {
-	// LOG_INF_CB("retro audio callback");
-	// for (unsigned i = 0; i < 30000 / 60; i++, phase++) {
-	//   int16_t val = 0x800 * sinf(2.0f * M_PI * phase * 300.0f / 30000.0f);
-	//   audio_cb(val, val);
-	// }
-
-	// phase %= 100;
 }
 
 static void audio_set_state(bool enable)
@@ -200,37 +196,29 @@ uint32_t framebuffer[VIDEO_HEIGHT * VIDEO_PITCH] = {0};
 void retro_run(void)
 {
 	update_input();
-	audio_buf_t buf;
-	buf.buffer = NULL;
-	buf.len = NULL;
 
 	bool updated = false;
-	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
 		check_variables();
+	}
 
 	/* step 70224 */
 	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		gb_cpu_step();
 		gb_ppu_step();
-		buf = gb_papu_step();
+		gb_papu_step();
 	}
 
 	video_cb(framebuffer, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH * sizeof(uint32_t));
 
-	uint16_t remaining_frames = *buf.len / 2;
+	size_t uploaded_frames = 0;
 	int16_t buf_pos = 0;
 
-	// for (int i = 0; i < *buf.len; i++) {
-	// }
-	// audio_batch_cb((int16_t *)&buf.buffer[buf_pos], remaining_frames);
-
-	while (remaining_frames > 0) {
-
-		size_t uploaded_frames = audio_batch_cb(&buf.buffer[buf_pos], remaining_frames);
-		buf_pos += 2;
-		remaining_frames -= uploaded_frames;
+	for (int remaining_frames = audio_buf_pos / 2; remaining_frames > 0;
+	     remaining_frames -= uploaded_frames, buf_pos += 2) {
+		uploaded_frames = audio_batch_cb(&audio_buf[buf_pos], remaining_frames);
 	}
-	*buf.len = 0;
+	audio_buf_pos = 0;
 }
 
 void prvDisplayLineBuffer(uint32_t *buffer)
@@ -318,6 +306,7 @@ bool retro_load_game(const struct retro_game_info *info)
 	memcpy(rom_data, info->data, info->size);
 	gb_cpu_init();
 	gb_ppu_init();
+	gb_papu_init(audio_buf, &audio_buf_pos, AUDIO_BUF_SIZE);
 	gb_memory_init(boot_rom_data, rom_data, false);
 	gb_memory_set_control_function(prvControlsJoypad);
 	gb_ppu_set_display_frame_buffer(prvDisplayLineBuffer);

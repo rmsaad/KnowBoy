@@ -6,6 +6,7 @@
 #include <SDL_ttf.h>
 
 #define MAX_MENU_OPTIONS 3
+#define AUDIO_BUF_SIZE	 32768
 
 typedef struct {
 	bool enable;
@@ -15,6 +16,8 @@ typedef struct {
 	int window_width;
 	int window_height;
 	const float aspect_ratio;
+	uint16_t audio_buf[AUDIO_BUF_SIZE];
+	uint16_t audio_buf_pos;
 } gb_av_t;
 
 typedef struct {

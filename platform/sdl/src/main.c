@@ -487,6 +487,7 @@ int load_rom(gb_config_t *gb_config)
 	}
 	gb_cpu_init();
 	gb_ppu_init();
+	gb_papu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
 	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
 	gb_memory_set_control_function(controls_joypad);
 	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
@@ -495,20 +496,16 @@ int load_rom(gb_config_t *gb_config)
 
 int run_rom(gb_config_t *gb_config)
 {
-	audio_buf_t buf;
-	buf.buffer = NULL;
-	buf.len = NULL;
-
 	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		gb_cpu_step();
 		gb_ppu_step();
-		buf = gb_papu_step();
+		gb_papu_step();
 	}
 
 	if (gb_config->av.enable) {
-		SDL_QueueAudio(1, buf.buffer, (*buf.len) * 2);
+		SDL_QueueAudio(1, gb_config->av.audio_buf, (gb_config->av.audio_buf_pos) * 2);
 	}
-	*buf.len = 0;
+	gb_config->av.audio_buf_pos = 0;
 	return 0;
 }
 
