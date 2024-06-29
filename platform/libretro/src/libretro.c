@@ -195,8 +195,6 @@ static void audio_set_state(bool enable)
 	(void)enable;
 }
 
-int Tstates = 0;
-
 uint32_t framebuffer[VIDEO_HEIGHT * VIDEO_PITCH] = {0};
 
 void retro_run(void)
@@ -211,14 +209,11 @@ void retro_run(void)
 		check_variables();
 
 	/* step 70224 */
-	while (Tstates < 70224) {
+	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		gb_cpu_step();
 		gb_ppu_step();
 		buf = gb_papu_step();
-		Tstates += 4;
 	}
-
-	Tstates -= 70224;
 
 	video_cb(framebuffer, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH * sizeof(uint32_t));
 

@@ -495,19 +495,15 @@ int load_rom(gb_config_t *gb_config)
 
 int run_rom(gb_config_t *gb_config)
 {
-	static int Tstates = 0;
 	audio_buf_t buf;
 	buf.buffer = NULL;
 	buf.len = NULL;
 
-	while (Tstates < 70224) {
+	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		gb_cpu_step();
 		gb_ppu_step();
 		buf = gb_papu_step();
-		Tstates += 4;
 	}
-
-	Tstates -= 70224;
 
 	if (gb_config->av.enable) {
 		SDL_QueueAudio(1, buf.buffer, (*buf.len) * 2);
