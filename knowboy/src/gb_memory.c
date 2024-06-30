@@ -17,7 +17,6 @@
 #include <stdint.h>
 #include <string.h>
 
-registers_t reg;
 memory_t mem;
 static uint8_t joypad_sel_dir = 0;
 static uint8_t joypad_sel_but = 0;
@@ -85,20 +84,20 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_
 		mem.map[0xFFFA] = 0x39;
 		mem.map[0xFFFB] = 0x01;
 		mem.map[0xFFFC] = 0x2E;
-		reg.PC = 0x0100;
-		reg.AF = 0x01B0;
-		reg.BC = 0x0013;
-		reg.DE = 0x0008;
-		reg.HL = 0x014D;
-		reg.SP = 0xFFFE;
+		mem.reg.PC = 0x0100;
+		mem.reg.AF = 0x01B0;
+		mem.reg.BC = 0x0013;
+		mem.reg.DE = 0x0008;
+		mem.reg.HL = 0x014D;
+		mem.reg.SP = 0xFFFE;
 	} else {
 		gb_memory_load(boot_rom, 256);
-		reg.PC = 0;
-		reg.AF = 0;
-		reg.BC = 0;
-		reg.DE = 0;
-		reg.HL = 0;
-		reg.SP = 0;
+		mem.reg.PC = 0;
+		mem.reg.AF = 0;
+		mem.reg.BC = 0;
+		mem.reg.DE = 0;
+		mem.reg.HL = 0;
+		mem.reg.SP = 0;
 		clock_mode = 0;
 		timer_stop_start = 0;
 		data_trans_flag = 0;
