@@ -13,7 +13,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-
 // ppu modes
 #define STAT_MODE_0 0 // HBLANK
 #define STAT_MODE_1 1 // VBLANK
@@ -295,8 +294,6 @@ uint16_t gb_memory_read_short(uint16_t address);
 void gb_memory_inc_timers(uint8_t duration);
 void gb_memory_set_bit(uint16_t address, uint8_t bit);
 void gb_memory_reset_bit(uint16_t address, uint8_t bit);
-void gb_memory_print(void);
-void gb_memory_set_op(uint8_t op);
 void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_skip);
 
 #endif /* INCLUDE_GB_MEMORY_H_ */

@@ -19,7 +19,6 @@
 
 registers_t reg;
 memory_t mem;
-uint8_t current_opcode;
 static uint8_t joypad_sel_dir = 0;
 static uint8_t joypad_sel_but = 0;
 static uint8_t timer_stop_start = 0;
@@ -53,16 +52,6 @@ const uint8_t *gb_memory_get_rom_pointer(void)
 }
 
 /**
- * @brief Set the current opcode for Debug Printing to LCD screen. See gb_memory_print();
- * @param op current opcode.
- * @return Nothing
- */
-void gb_memory_set_op(uint8_t op)
-{
-	current_opcode = op;
-}
-
-/**
  * @brief Initialize certain Gameboy registers with their correct information.
  * @details At start up the Joypad Register should read 0xCF to denote that no Joypad buttons are
  * being pressed. The IF register should read 0xE1 to set the appropriate flags.
@@ -70,7 +59,6 @@ void gb_memory_set_op(uint8_t op)
  */
 void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_skip)
 {
-	// memset(mem.ram, 0, 0xFFFF);
 	gbc_mbc_init();
 	rom = game_rom;
 	memset(&mem.ram[0], 0x00, 0xFFFF);
@@ -388,14 +376,4 @@ void gb_memory_inc_timers(uint8_t duration)
 
 		old_tima = mem.ram[TIMA_ADDR];
 	}
-}
-
-/**
- * @brief Print out all the Register value information to the Screen for debugging purposes.
- * @returns Nothing
- */
-void gb_memory_print(void)
-{
-	LOG_INF("opcode: %x, PC: %x, AF: %x, BC: %x, DE: %x, HL: %x, SP: %x", current_opcode,
-		reg.PC, reg.AF, reg.BC, reg.DE, reg.HL, reg.SP);
 }
