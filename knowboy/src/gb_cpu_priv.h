@@ -37,8 +37,8 @@
 #define H_FLAG_VAL (0x1 << H_FLAG_BIT)
 #define C_FLAG_VAL (0x1 << C_FLAG_BIT)
 
-#define CUSTOM_CYCLES 255
 #define CUSTOM_TIMING 255
+#define PREFIX_OPCODE 0xCB
 
 /* Increment 8 bit register */
 static inline void gb_cpu_inc_register(uint8_t *reg, uint8_t *flag_reg)
