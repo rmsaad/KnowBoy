@@ -278,7 +278,7 @@ typedef struct {
 } registers_t;
 
 typedef struct {
-	uint8_t ram[65536];
+	uint8_t map[0x10000];
 } memory_t;
 
 typedef uint8_t (*gb_memory_controls_t)(uint8_t *, uint8_t *);

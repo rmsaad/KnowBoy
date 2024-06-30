@@ -61,30 +61,30 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_
 {
 	gbc_mbc_init();
 	rom = game_rom;
-	memset(&mem.ram[0], 0x00, 0xFFFF);
+	memset(&mem.map[0], 0x00, 0xFFFF);
 	gb_memory_load(game_rom, 32768);
-	gb_mbc_set_controller_type(mem.ram[0x147]);
+	gb_mbc_set_controller_type(mem.map[0x147]);
 	gb_memory_write(TAC_ADDR, 0xF8);
-	mem.ram[JOY_ADDR] = 0xCF;
-	mem.ram[IF_ADDR] = 0xE1;
+	mem.map[JOY_ADDR] = 0xCF;
+	mem.map[IF_ADDR] = 0xE1;
 
 	if (boot_skip) {
-		mem.ram[LCDC_ADDR] = 0x91;
-		mem.ram[STAT_ADDR] = 0x01;
-		mem.ram[DIV_ADDR] = 0xAB;
-		mem.ram[NR11_ADDR] = 0x80;
-		mem.ram[NR12_ADDR] = 0xF3;
-		mem.ram[NR13_ADDR] = 0xC1;
-		mem.ram[NR14_ADDR] = 0x87;
-		mem.ram[NR50_ADDR] = 0x77;
-		mem.ram[NR51_ADDR] = 0xF3;
-		mem.ram[NR52_ADDR] = 0xF1;
-		mem.ram[LY_ADDR] = 0x99;
-		mem.ram[BGP_ADDR] = 0xFC;
-		mem.ram[BOOT_EN_ADDR] = 0x01;
-		mem.ram[0xFFFA] = 0x39;
-		mem.ram[0xFFFB] = 0x01;
-		mem.ram[0xFFFC] = 0x2E;
+		mem.map[LCDC_ADDR] = 0x91;
+		mem.map[STAT_ADDR] = 0x01;
+		mem.map[DIV_ADDR] = 0xAB;
+		mem.map[NR11_ADDR] = 0x80;
+		mem.map[NR12_ADDR] = 0xF3;
+		mem.map[NR13_ADDR] = 0xC1;
+		mem.map[NR14_ADDR] = 0x87;
+		mem.map[NR50_ADDR] = 0x77;
+		mem.map[NR51_ADDR] = 0xF3;
+		mem.map[NR52_ADDR] = 0xF1;
+		mem.map[LY_ADDR] = 0x99;
+		mem.map[BGP_ADDR] = 0xFC;
+		mem.map[BOOT_EN_ADDR] = 0x01;
+		mem.map[0xFFFA] = 0x39;
+		mem.map[0xFFFB] = 0x01;
+		mem.map[0xFFFC] = 0x2E;
 		reg.PC = 0x0100;
 		reg.AF = 0x01B0;
 		reg.BC = 0x0013;
@@ -106,14 +106,14 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_
 }
 
 /**
- * @brief Loads data of amount bytes into Memory maps from mem.ram[0] to mem.ram[bytes - 1].
+ * @brief Loads data of amount bytes into Memory maps from mem.map[0] to mem.map[bytes - 1].
  * @param data data to be loaded into memory map.
  * @param size amount of bytes.
  * @return Nothing
  */
 void gb_memory_load(const void *data, uint32_t bytes)
 {
-	memcpy(mem.ram, data, bytes);
+	memcpy(mem.map, data, bytes);
 }
 
 /**
@@ -150,23 +150,23 @@ void gb_memory_write(uint16_t address, uint8_t data)
 		}
 
 		else if (address == DIV_ADDR) {
-			mem.ram[DIV_ADDR] = 0;
+			mem.map[DIV_ADDR] = 0;
 			return;
 		}
 
 		else if (address == TAC_ADDR) {
 			timer_stop_start = CHK_BIT(data, 2);
 			clock_mode = (CHK_BIT(data, 1) * 2) + CHK_BIT(data, 0);
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			return;
 		}
 
 		else if (address == STC_ADDR) {
 			if (CHK_BIT(data, 7)) {
 				data_trans_flag = 1;
-				LOG_DBG("SER: %c", mem.ram[SB_ADDR]);
+				LOG_DBG("SER: %c", mem.map[SB_ADDR]);
 			}
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			return;
 		}
 
@@ -180,33 +180,33 @@ void gb_memory_write(uint16_t address, uint8_t data)
 
 		else if (address == NR52_ADDR) {
 			if (CHK_BIT(data, 7)) {
-				mem.ram[address] |= 0xF0;
+				mem.map[address] |= 0xF0;
 			} else {
-				mem.ram[address] &= ~(0xF0);
+				mem.map[address] &= ~(0xF0);
 			}
 			return;
 		}
 
 		else if (address == NR14_ADDR && CHK_BIT(data, 7)) {
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			gb_papu_trigger_ch1();
 			return;
 		}
 
 		else if (address == NR24_ADDR && CHK_BIT(data, 7)) {
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			gb_papu_trigger_ch2();
 			return;
 		}
 
 		else if (address == NR34_ADDR && CHK_BIT(data, 7)) {
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			gb_papu_trigger_ch3();
 			return;
 		}
 
 		else if (address == NR44_ADDR && CHK_BIT(data, 7)) {
-			mem.ram[address] = data;
+			mem.map[address] = data;
 			gb_papu_trigger_ch4();
 			return;
 		}
@@ -218,11 +218,11 @@ void gb_memory_write(uint16_t address, uint8_t data)
 	}
 
 	if (address >= ECHORAM_BASE && address < OAM_BASE) {
-		mem.ram[address - 0x2000] = data;
+		mem.map[address - 0x2000] = data;
 		return;
 	}
 
-	mem.ram[address] = data;
+	mem.map[address] = data;
 }
 
 /**
@@ -246,12 +246,12 @@ void gb_memory_write_short(uint16_t address, uint16_t data)
 void gb_memory_set_bit(uint16_t address, uint8_t bit)
 {
 	if (address >= ECHORAM_BASE && address < OAM_BASE)
-		mem.ram[address - 0x2000] |= (0x1 << bit);
+		mem.map[address - 0x2000] |= (0x1 << bit);
 
 	if ((address >= CARTROM_BANK0 && address < VRAM_BASE))
 		return;
 
-	mem.ram[address] |= (0x1 << bit);
+	mem.map[address] |= (0x1 << bit);
 }
 
 /**
@@ -264,12 +264,12 @@ void gb_memory_reset_bit(uint16_t address, uint8_t bit)
 {
 
 	if (address >= ECHORAM_BASE && address < OAM_BASE)
-		mem.ram[address - 0x2000] &= ~(0x1 << bit);
+		mem.map[address - 0x2000] &= ~(0x1 << bit);
 
 	if ((address >= CARTROM_BANK0 && address < VRAM_BASE))
 		return;
 
-	mem.ram[address] &= ~(0x1 << bit);
+	mem.map[address] &= ~(0x1 << bit);
 }
 
 /**
@@ -280,7 +280,7 @@ void gb_memory_reset_bit(uint16_t address, uint8_t bit)
 uint8_t gb_memory_read(uint16_t address)
 {
 
-	if ((address >= CARTROM_BANK0 && address < VRAM_BASE) && mem.ram[BOOT_EN_ADDR] != 0) {
+	if ((address >= CARTROM_BANK0 && address < VRAM_BASE) && mem.map[BOOT_EN_ADDR] != 0) {
 		return gb_mbc_read_bank_x(address);
 	}
 
@@ -295,9 +295,9 @@ uint8_t gb_memory_read(uint16_t address)
 	}
 
 	else if (address >= ECHORAM_BASE && address < OAM_BASE)
-		return mem.ram[address - 0x2000];
+		return mem.map[address - 0x2000];
 
-	return mem.ram[address];
+	return mem.map[address];
 }
 
 /**
@@ -307,7 +307,7 @@ uint8_t gb_memory_read(uint16_t address)
  */
 uint16_t gb_memory_read_short(uint16_t address)
 {
-	return CAT_BYTES(mem.ram[address], mem.ram[address + 1]);
+	return CAT_BYTES(mem.map[address], mem.map[address + 1]);
 }
 
 /**
@@ -324,7 +324,7 @@ void gb_memory_inc_timers(uint8_t duration)
 	static uint8_t timer_div_8k = 0;
 
 	if ((timer_div + (duration << 2)) > 0xFF) {
-		mem.ram[DIV_ADDR]++;
+		mem.map[DIV_ADDR]++;
 
 		if (data_trans_flag) {
 			timer_div_8k++;
@@ -360,20 +360,20 @@ void gb_memory_inc_timers(uint8_t duration)
 		}
 
 		if (timer_tima + curDuration > 0xFF) {
-			mem.ram[TIMA_ADDR]++;
+			mem.map[TIMA_ADDR]++;
 		}
 
 		if (timer_tima + curDuration > 0x1FE) {
-			mem.ram[TIMA_ADDR]++;
+			mem.map[TIMA_ADDR]++;
 		}
 
 		timer_tima += curDuration;
 
-		if (mem.ram[TIMA_ADDR] < 5 && old_tima == 0xFF) {
-			mem.ram[TIMA_ADDR] = mem.ram[TMA_ADDR];
+		if (mem.map[TIMA_ADDR] < 5 && old_tima == 0xFF) {
+			mem.map[TIMA_ADDR] = mem.map[TMA_ADDR];
 			gb_memory_set_bit(IF_ADDR, 2);
 		}
 
-		old_tima = mem.ram[TIMA_ADDR];
+		old_tima = mem.map[TIMA_ADDR];
 	}
 }

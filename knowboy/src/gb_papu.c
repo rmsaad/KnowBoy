@@ -85,20 +85,20 @@ void gb_papu_step_ch1(void)
 {
 
 	// length
-	if (frame_sequence_step % 2 == 0 && (mem.ram[NR14_ADDR] & CH1_LEN_EN) &&
+	if (frame_sequence_step % 2 == 0 && (mem.map[NR14_ADDR] & CH1_LEN_EN) &&
 	    ch1_length_counter) {
 		ch1_length_counter--;
 		if (ch1_length_counter <= 0) {
-			mem.ram[NR52_ADDR] &= ~CH1_ON;
+			mem.map[NR52_ADDR] &= ~CH1_ON;
 		}
 	}
 
 	//  handle sweep (frequency sweep)
 	ch1_sweep_step =
-		(mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
+		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
 	ch1_sweep_pace =
-		(mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
-	ch1_sweep_dir = (mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET;
+		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
+	ch1_sweep_dir = (mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET;
 
 	if ((frame_sequence_step == 2 || frame_sequence_step == 6) && ch1_sweep_pace &&
 	    ch1_sweep_step) {
@@ -121,14 +121,14 @@ void gb_papu_step_ch1(void)
 				if (newfreq < 2048 && ch1_sweep_step) {
 					ch1_sweep_shadow = newfreq;
 
-					mem.ram[NR13_ADDR] = ch1_sweep_shadow & 0xff;
+					mem.map[NR13_ADDR] = ch1_sweep_shadow & 0xff;
 					gb_memory_write(NR14_ADDR, (ch1_sweep_shadow >> 8) & 0x07);
 
 					if ((ch1_sweep_shadow +
 					     ((ch1_sweep_shadow >> ch1_sweep_step) *
 					      ch1_sweep_negate)) > 2047) {
 						ch1_sweep_enable = 0;
-						mem.ram[NR52_ADDR] &= ~CH1_ON;
+						mem.map[NR52_ADDR] &= ~CH1_ON;
 					}
 				}
 
@@ -136,7 +136,7 @@ void gb_papu_step_ch1(void)
 				    ((ch1_sweep_shadow + ((ch1_sweep_shadow >> ch1_sweep_step) *
 							  ch1_sweep_negate)) > 2047)) {
 					ch1_sweep_enable = 0;
-					mem.ram[NR52_ADDR] &= ~CH1_ON;
+					mem.map[NR52_ADDR] &= ~CH1_ON;
 				}
 			}
 		}
@@ -144,15 +144,15 @@ void gb_papu_step_ch1(void)
 
 	//  handle envelope (volume envelope)
 	if (frame_sequence_step == 7 && ch1_daq_on &&
-	    ((mem.ram[NR12_ADDR] & CH1_SWEEP_PACE) >> CH1_SWEEP_PACE_OFFSET)) {
+	    ((mem.map[NR12_ADDR] & CH1_SWEEP_PACE) >> CH1_SWEEP_PACE_OFFSET)) {
 		--ch1_envelope;
 
 		if (ch1_envelope <= 0) {
 			ch1_envelope =
-				(mem.ram[NR12_ADDR] & CH1_SWEEP_PACE) >> CH1_SWEEP_PACE_OFFSET;
+				(mem.map[NR12_ADDR] & CH1_SWEEP_PACE) >> CH1_SWEEP_PACE_OFFSET;
 
 			int8_t vol =
-				ch1_volume + ((mem.ram[NR12_ADDR] & CH1_ENVELOPE_DIR) ? 1 : -1);
+				ch1_volume + ((mem.map[NR12_ADDR] & CH1_ENVELOPE_DIR) ? 1 : -1);
 
 			if (vol >= 0x0 && vol <= 0xF) {
 				ch1_volume = vol;
@@ -164,27 +164,27 @@ void gb_papu_step_ch1(void)
 void gb_papu_step_ch2(void)
 {
 	// length
-	if (frame_sequence_step % 2 == 0 && (mem.ram[NR24_ADDR] & CH2_LEN_EN) &&
+	if (frame_sequence_step % 2 == 0 && (mem.map[NR24_ADDR] & CH2_LEN_EN) &&
 	    ch2_length_counter) {
 		ch2_length_counter--;
 		if (ch2_length_counter <= 0) {
-			mem.ram[NR52_ADDR] &= ~CH2_ON;
+			mem.map[NR52_ADDR] &= ~CH2_ON;
 		}
 	}
 
 	// envelope
 	if (frame_sequence_step == 7 && ch2_daq_on &&
-	    ((mem.ram[NR22_ADDR] & CH2_SWEEP_PACE) >> CH2_SWEEP_PACE_OFFSET)) {
+	    ((mem.map[NR22_ADDR] & CH2_SWEEP_PACE) >> CH2_SWEEP_PACE_OFFSET)) {
 		ch2_envelope--;
 
 		if (ch2_envelope <= 0) {
 
 			ch2_envelope =
-				(mem.ram[NR22_ADDR] & CH2_SWEEP_PACE) >> CH2_SWEEP_PACE_OFFSET;
+				(mem.map[NR22_ADDR] & CH2_SWEEP_PACE) >> CH2_SWEEP_PACE_OFFSET;
 
 			// get louder or quieter
 			int8_t vol =
-				ch2_volume + ((mem.ram[NR22_ADDR] & CH2_ENVELOPE_DIR) ? 1 : -1);
+				ch2_volume + ((mem.map[NR22_ADDR] & CH2_ENVELOPE_DIR) ? 1 : -1);
 
 			if (vol >= 0x0 && vol <= 0xF) {
 				ch2_volume = vol;
@@ -197,11 +197,11 @@ void gb_papu_step_ch3(void)
 {
 
 	//  handle length
-	if (frame_sequence_step % 2 == 0 && (mem.ram[NR34_ADDR] & CH3_LEN_EN) &&
+	if (frame_sequence_step % 2 == 0 && (mem.map[NR34_ADDR] & CH3_LEN_EN) &&
 	    ch3_length_counter) {
 		ch3_length_counter--;
 		if (ch3_length_counter == 0) {
-			mem.ram[NR52_ADDR] &= ~CH3_ON;
+			mem.map[NR52_ADDR] &= ~CH3_ON;
 		}
 	}
 }
@@ -210,11 +210,11 @@ void gb_papu_step_ch4(void)
 {
 
 	//  handle length
-	if (frame_sequence_step % 2 == 0 && (mem.ram[NR44_ADDR] & CH4_LEN_EN) &&
+	if (frame_sequence_step % 2 == 0 && (mem.map[NR44_ADDR] & CH4_LEN_EN) &&
 	    ch4_length_counter) {
 		ch4_length_counter--;
 		if (ch4_length_counter == 0) {
-			mem.ram[NR52_ADDR] &= ~CH4_ON;
+			mem.map[NR52_ADDR] &= ~CH4_ON;
 		}
 	}
 
@@ -224,11 +224,11 @@ void gb_papu_step_ch4(void)
 
 		if (ch4_envelope <= 0) {
 
-			ch4_envelope = mem.ram[NR42_ADDR] & CH4_SWEEP_PACE >> CH4_SWEEP_PACE_OFFSET;
-			if ((mem.ram[NR42_ADDR] & CH4_SWEEP_PACE) != 0) {
+			ch4_envelope = mem.map[NR42_ADDR] & CH4_SWEEP_PACE >> CH4_SWEEP_PACE_OFFSET;
+			if ((mem.map[NR42_ADDR] & CH4_SWEEP_PACE) != 0) {
 
 				int8_t vol = ch4_volume +
-					     ((mem.ram[NR42_ADDR] & CH4_ENVELOPE_DIR) ? 1 : -1);
+					     ((mem.map[NR42_ADDR] & CH4_ENVELOPE_DIR) ? 1 : -1);
 
 				if (vol >= 0x0 && vol <= 0xF)
 					ch4_volume = vol;
@@ -252,39 +252,39 @@ void gb_papu_step(void)
 
 		// check timer
 		if (ch1_timer-- <= 0x00) {
-			uint16_t freq_x = ((mem.ram[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 |
-					   mem.ram[NR13_ADDR] & CH1_PERIOD_LOW);
+			uint16_t freq_x = ((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 |
+					   mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 			ch1_timer = (2048 - freq_x) * 4;
 			ch1_duty_pos++;
 			ch1_duty_pos %= 8;
 		}
 
 		if (ch2_timer-- <= 0x00) {
-			uint16_t freq_x = ((mem.ram[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 |
-					   mem.ram[NR23_ADDR] & CH2_PERIOD_LOW);
+			uint16_t freq_x = ((mem.map[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 |
+					   mem.map[NR23_ADDR] & CH2_PERIOD_LOW);
 			ch2_timer = (2048 - freq_x) * 4;
 			ch2_duty_pos++;
 			ch2_duty_pos %= 8;
 		}
 
 		if (ch3_timer-- <= 0x00) {
-			uint16_t freq_x = ((mem.ram[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 |
-					   mem.ram[NR33_ADDR] & CH3_PERIOD_LOW);
+			uint16_t freq_x = ((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 |
+					   mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 			ch3_timer = (2048 - freq_x) * 2;
 			ch3_wave_pos++;
 			ch3_wave_pos %= 32;
 		}
 
 		if (ch4_timer-- <= 0x00) {
-			ch4_timer = ch4_divisor[mem.ram[NR43_ADDR] & CH4_CLOCK_DIV]
-				    << ((mem.ram[NR43_ADDR] & CH4_CLOCK_SHIFT) >>
+			ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
+				    << ((mem.map[NR43_ADDR] & CH4_CLOCK_SHIFT) >>
 					CH4_CLOCK_SHIFT_OFFSET);
 
 			//  handle lfsr
 			uint8_t xor_res = (ch4_lfsr & 0x1) ^ ((ch4_lfsr & 0x2) >> 1);
 			ch4_lfsr >>= 1;
 			ch4_lfsr |= (xor_res << 14);
-			if ((mem.ram[NR43_ADDR] & CH4_LFSR_WIDTH) >> CH4_LFSR_WIDTH_OFFSET) {
+			if ((mem.map[NR43_ADDR] & CH4_LFSR_WIDTH) >> CH4_LFSR_WIDTH_OFFSET) {
 				ch4_lfsr |= (xor_res << 6);
 				ch4_lfsr &= 0x7F;
 			}
@@ -311,22 +311,22 @@ void gb_papu_step(void)
 			gb_papu_buf[*gb_papu_buf_pos] = 0;
 			gb_papu_buf[*gb_papu_buf_pos + 1] = 0;
 
-			if (mem.ram[NR52_ADDR] & AUDIO_ON) {
+			if (mem.map[NR52_ADDR] & AUDIO_ON) {
 
 				// ch1
-				if (mem.ram[NR52_ADDR] & CH1_ON) {
+				if (mem.map[NR52_ADDR] & CH1_ON) {
 
-					int duty = (mem.ram[NR11_ADDR] & CH1_WAVE_DUTY) >>
+					int duty = (mem.map[NR11_ADDR] & CH1_WAVE_DUTY) >>
 						   CH1_WAVE_DUTY_OFFSET;
 
-					if (mem.ram[NR51_ADDR] & CH1_LEFT) {
+					if (mem.map[NR51_ADDR] & CH1_LEFT) {
 						gb_papu_buf[*gb_papu_buf_pos] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
 								 : 0);
 					}
 
-					if ((mem.ram[NR51_ADDR] & CH1_RIGHT)) {
+					if ((mem.map[NR51_ADDR] & CH1_RIGHT)) {
 						gb_papu_buf[*gb_papu_buf_pos + 1] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
@@ -335,18 +335,18 @@ void gb_papu_step(void)
 				}
 
 				// ch2
-				if (mem.ram[NR52_ADDR] & CH2_ON) {
+				if (mem.map[NR52_ADDR] & CH2_ON) {
 
-					int duty = (mem.ram[NR21_ADDR] & CH2_WAVE_DUTY) >>
+					int duty = (mem.map[NR21_ADDR] & CH2_WAVE_DUTY) >>
 						   CH2_WAVE_DUTY_OFFSET;
 
-					if (mem.ram[NR51_ADDR] & CH2_LEFT) {
+					if (mem.map[NR51_ADDR] & CH2_LEFT) {
 						gb_papu_buf[*gb_papu_buf_pos] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
 								 : 0);
 					}
-					if (mem.ram[NR51_ADDR] & CH2_RIGHT) {
+					if (mem.map[NR51_ADDR] & CH2_RIGHT) {
 						gb_papu_buf[*gb_papu_buf_pos + 1] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
@@ -355,10 +355,10 @@ void gb_papu_step(void)
 				}
 
 				// ch3
-				if ((mem.ram[NR52_ADDR] & CH3_ON) &&
-				    (mem.ram[NR30_ADDR] & CH3_DAQ_ON)) {
+				if ((mem.map[NR52_ADDR] & CH3_ON) &&
+				    (mem.map[NR30_ADDR] & CH3_DAQ_ON)) {
 
-					uint8_t wave = mem.ram[WPRAM_BASE + (ch3_wave_pos / 2)];
+					uint8_t wave = mem.map[WPRAM_BASE + (ch3_wave_pos / 2)];
 
 					if (ch3_wave_pos % 2) {
 						wave = wave & 0xf;
@@ -366,41 +366,41 @@ void gb_papu_step(void)
 						wave = wave >> 4;
 					}
 
-					uint8_t vol = ((mem.ram[NR32_ADDR] & CH3_OUTPUT_LEVEL) >>
+					uint8_t vol = ((mem.map[NR32_ADDR] & CH3_OUTPUT_LEVEL) >>
 						       CH3_OUTPUT_LEVEL_OFFSET);
 					if (vol)
 						wave = wave >> (vol - 1);
 					else
 						wave = wave >> 4;
 
-					if (mem.ram[NR51_ADDR] & CH3_LEFT) {
+					if (mem.map[NR51_ADDR] & CH3_LEFT) {
 						gb_papu_buf[*gb_papu_buf_pos] += wave;
 					}
 
-					if (mem.ram[NR51_ADDR] & CH3_RIGHT) {
+					if (mem.map[NR51_ADDR] & CH3_RIGHT) {
 						gb_papu_buf[*gb_papu_buf_pos + 1] += wave;
 					}
 				}
 
 				// ch4
-				if (((mem.ram[NR52_ADDR] & CH4_ON)) &&
-				    (mem.ram[NR42_ADDR] & (CH4_INITIAL_VOL + CH4_ENVELOPE_DIR))) {
+				if (((mem.map[NR52_ADDR] & CH4_ON)) &&
+				    (mem.map[NR42_ADDR] & (CH4_INITIAL_VOL + CH4_ENVELOPE_DIR))) {
 
-					if (mem.ram[NR51_ADDR] & CH4_LEFT) {
+					if (mem.map[NR51_ADDR] & CH4_LEFT) {
 						gb_papu_buf[*gb_papu_buf_pos] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
-					if (mem.ram[NR51_ADDR] & CH4_RIGHT) {
+					if (mem.map[NR51_ADDR] & CH4_RIGHT) {
 						gb_papu_buf[*gb_papu_buf_pos + 1] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
 				}
 
 				gb_papu_buf[*gb_papu_buf_pos] <<=
-					((mem.ram[NR50_ADDR] & VOL_LEFT) >> VOL_LEFT_OFFSET);
+					((mem.map[NR50_ADDR] & VOL_LEFT) >> VOL_LEFT_OFFSET);
 
 				gb_papu_buf[*gb_papu_buf_pos + 1] <<=
-					((mem.ram[NR50_ADDR] & VOL_RIGHT) >> VOL_RIGHT_OFFSET);
+					((mem.map[NR50_ADDR] & VOL_RIGHT) >> VOL_RIGHT_OFFSET);
 			}
 			*gb_papu_buf_pos += 2;
 		}
@@ -411,30 +411,30 @@ void gb_papu_step(void)
 void gb_papu_trigger_ch1(void)
 {
 	// Enable Channel
-	mem.ram[NR52_ADDR] |= CH1_ON;
+	mem.map[NR52_ADDR] |= CH1_ON;
 
 	// Set Length Channel to 64 - t1
 	if (ch1_length_counter == 0)
-		ch1_length_counter = 64 - (mem.ram[NR11_ADDR] & CH1_INITIAL_LEN_TIMER);
+		ch1_length_counter = 64 - (mem.map[NR11_ADDR] & CH1_INITIAL_LEN_TIMER);
 
 	uint16_t freq_x =
-		((mem.ram[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.ram[NR13_ADDR] & CH1_PERIOD_LOW);
+		((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 	ch1_timer = (2048 - freq_x) * 4;
 
 	// reload volume envelope
-	ch1_envelope = mem.ram[NR12_ADDR] & CH1_SWEEP_PACE >> CH1_SWEEP_PACE_OFFSET;
+	ch1_envelope = mem.map[NR12_ADDR] & CH1_SWEEP_PACE >> CH1_SWEEP_PACE_OFFSET;
 	ch1_daq_on = 1;
 
-	ch1_volume = (mem.ram[NR12_ADDR] & CH1_INITIAL_VOL) >> CH1_INITIAL_VOL_OFFSET;
+	ch1_volume = (mem.map[NR12_ADDR] & CH1_INITIAL_VOL) >> CH1_INITIAL_VOL_OFFSET;
 
 	ch1_sweep_pace =
-		(mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
+		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
 
 	ch1_sweep_step =
-		(mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
+		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
 
 	ch1_sweep_negate =
-		((mem.ram[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET) ? -1
+		((mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET) ? -1
 											     : 1;
 
 	//  this was an OR before. Change if needed
@@ -444,74 +444,74 @@ void gb_papu_trigger_ch1(void)
 		ch1_sweep_enable = 0;
 
 	ch1_sweep_shadow =
-		((mem.ram[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.ram[NR13_ADDR] & CH1_PERIOD_LOW);
+		((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 
 	if (ch1_sweep_step) {
 		if ((ch1_sweep_shadow + ((ch1_sweep_shadow >> ch1_sweep_step) * ch1_sweep_negate)) >
 		    2047) {
-			mem.ram[NR52_ADDR] &= ~CH1_ON;
+			mem.map[NR52_ADDR] &= ~CH1_ON;
 			ch1_sweep_enable = 0;
 		}
 	}
 
-	if (mem.ram[NR12_ADDR] & (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL) == 0x00) {
-		mem.ram[NR52_ADDR] &= ~CH1_ON;
+	if (mem.map[NR12_ADDR] & (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL) == 0x00) {
+		mem.map[NR52_ADDR] &= ~CH1_ON;
 	}
 }
 
 void gb_papu_trigger_ch2(void)
 {
-	mem.ram[NR52_ADDR] |= CH2_ON;
+	mem.map[NR52_ADDR] |= CH2_ON;
 
 	if (ch2_length_counter == 0)
-		ch2_length_counter = 64 - (mem.ram[NR21_ADDR] & CH2_INITIAL_LEN_TIMER);
+		ch2_length_counter = 64 - (mem.map[NR21_ADDR] & CH2_INITIAL_LEN_TIMER);
 
 	uint16_t freq_x =
-		((mem.ram[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 | mem.ram[NR23_ADDR] & CH2_PERIOD_LOW);
+		((mem.map[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 | mem.map[NR23_ADDR] & CH2_PERIOD_LOW);
 	ch2_timer = (2048 - freq_x) * 4;
 
-	ch2_envelope = mem.ram[NR22_ADDR] & CH2_SWEEP_PACE >> CH2_SWEEP_PACE_OFFSET;
+	ch2_envelope = mem.map[NR22_ADDR] & CH2_SWEEP_PACE >> CH2_SWEEP_PACE_OFFSET;
 	ch2_daq_on = 1;
 
-	ch2_volume = (mem.ram[NR22_ADDR] & CH2_INITIAL_VOL) >> CH2_INITIAL_VOL_OFFSET;
+	ch2_volume = (mem.map[NR22_ADDR] & CH2_INITIAL_VOL) >> CH2_INITIAL_VOL_OFFSET;
 
-	if (mem.ram[NR22_ADDR] & (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL) == 0x00) {
-		mem.ram[NR52_ADDR] &= ~CH2_ON;
+	if (mem.map[NR22_ADDR] & (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL) == 0x00) {
+		mem.map[NR52_ADDR] &= ~CH2_ON;
 	}
 }
 
 void gb_papu_trigger_ch3(void)
 {
-	mem.ram[NR52_ADDR] |= CH3_ON;
+	mem.map[NR52_ADDR] |= CH3_ON;
 
 	if (ch3_length_counter == 0)
-		ch3_length_counter = 256 - (mem.ram[NR31_ADDR] & CH3_INITIAL_LEN_TIMER);
+		ch3_length_counter = 256 - (mem.map[NR31_ADDR] & CH3_INITIAL_LEN_TIMER);
 
 	uint16_t freq_x =
-		((mem.ram[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.ram[NR33_ADDR] & CH3_PERIOD_LOW);
+		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
 
 	ch3_wave_pos = 0;
 
-	if ((mem.ram[NR30_ADDR] & CH3_DAQ_ON) == 0x00) {
-		mem.ram[NR52_ADDR] &= ~CH3_ON;
+	if ((mem.map[NR30_ADDR] & CH3_DAQ_ON) == 0x00) {
+		mem.map[NR52_ADDR] &= ~CH3_ON;
 	}
 }
 
 void gb_papu_trigger_ch4(void)
 {
-	mem.ram[NR52_ADDR] |= CH4_ON;
+	mem.map[NR52_ADDR] |= CH4_ON;
 
 	if (ch4_length_counter == 0)
-		ch4_length_counter = 64 - (mem.ram[NR41_ADDR] & CH4_INITIAL_LEN_TIMER);
+		ch4_length_counter = 64 - (mem.map[NR41_ADDR] & CH4_INITIAL_LEN_TIMER);
 
-	ch4_timer = ch4_divisor[mem.ram[NR43_ADDR] & CH4_CLOCK_DIV]
-		    << ((mem.ram[NR43_ADDR] & CH4_CLOCK_SHIFT) >> CH4_CLOCK_SHIFT_OFFSET);
+	ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
+		    << ((mem.map[NR43_ADDR] & CH4_CLOCK_SHIFT) >> CH4_CLOCK_SHIFT_OFFSET);
 	ch4_lfsr = 0x7fff;
-	ch4_volume = (mem.ram[NR42_ADDR] & CH4_INITIAL_VOL) >> CH4_INITIAL_VOL_OFFSET;
-	ch4_envelope = (mem.ram[NR42_ADDR] & CH4_SWEEP_PACE) >> CH4_SWEEP_PACE_OFFSET;
+	ch4_volume = (mem.map[NR42_ADDR] & CH4_INITIAL_VOL) >> CH4_INITIAL_VOL_OFFSET;
+	ch4_envelope = (mem.map[NR42_ADDR] & CH4_SWEEP_PACE) >> CH4_SWEEP_PACE_OFFSET;
 
-	if (mem.ram[NR42_ADDR] & (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL) == 0x00) {
-		mem.ram[NR52_ADDR] &= ~CH4_ON;
+	if (mem.map[NR42_ADDR] & (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL) == 0x00) {
+		mem.map[NR52_ADDR] &= ~CH4_ON;
 	}
 }
