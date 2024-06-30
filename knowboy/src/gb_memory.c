@@ -18,17 +18,17 @@
 #include <string.h>
 
 memory_t mem;
+const uint8_t *rom;
 static uint8_t joypad_sel_dir = 0;
 static uint8_t joypad_sel_but = 0;
 static uint8_t timer_stop_start = 0;
 static uint8_t clock_mode = 0;
 static uint8_t data_trans_flag = 0;
-const uint8_t *rom;
 
 static gb_memory_controls_t gb_memory_controls;
 
 /*Function Prototypes*/
-uint8_t gb_memory_joypad(void);
+static uint8_t gb_memory_joypad(void);
 
 /**
  * @brief Sets function used in gb_memory_joypad() without needing to include control.h
@@ -120,7 +120,7 @@ void gb_memory_load(const void *data, uint32_t bytes)
  * @param data data trying to be written to Joypad Register.
  * @return Joypad Keys pressed
  */
-uint8_t gb_memory_joypad(void)
+static uint8_t gb_memory_joypad(void)
 {
 	return gb_memory_controls(&joypad_sel_dir, &joypad_sel_but);
 }

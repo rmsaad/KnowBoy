@@ -20,45 +20,45 @@
 // Line buffer start address
 
 // PPU Registers
-uint8_t ly_value = 0;
-uint8_t stat_mode;
+static uint8_t ly_value = 0;
+static uint8_t stat_mode;
 
 // State Ticks
-uint32_t line_cycle_counter;
+static uint32_t line_cycle_counter;
 
 // Palettes
-uint32_t bgp_color_to_palette[4];
-uint32_t obp0_color_to_palette[4];
-uint32_t obp1_color_to_palette[4];
+static uint32_t bgp_color_to_palette[4];
+static uint32_t obp0_color_to_palette[4];
+static uint32_t obp1_color_to_palette[4];
 
 // Frame Buffer variables
-uint32_t ucGBLine[160 * 3 * 2000];
-uint8_t ucBGWINline[160];
-uint32_t current_line;
-uint8_t ulScaleAmount = 1;
-uint32_t ulLineAdd;
+static uint32_t ucGBLine[160 * 3 * 2000];
+static uint8_t ucBGWINline[160];
+static uint32_t current_line;
+static uint8_t ulScaleAmount = 1;
+static uint32_t ulLineAdd;
 
 // Function Pointer pointing to external function in display.c
 static gb_ppu_display_frame_buffer_t gb_ppu_display_frame_buffer;
 
 /*Function Prototypes*/
-void gb_ppu_check_bgp();
-void gb_ppu_check_obp0();
-void gb_ppu_check_obp1();
-void gb_ppu_check_lyc(uint8_t ly);
-void gb_ppu_set_stat_mode(uint8_t mode);
-void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos);
-void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy, uint16_t tile_data_addr,
-				 uint16_t display_addr);
-void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
-			     uint16_t display_addr);
-void gb_ppu_draw_line_objects(uint8_t ly);
-void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy);
-uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
-				   uint16_t tile_data_addr, uint16_t display_addr);
-uint16_t gb_ppu_get_background_window_tile_data_select();
-uint16_t gb_ppu_get_background_tile_display_select();
-uint16_t gb_ppu_get_window_tile_display_select();
+static void gb_ppu_check_bgp();
+static void gb_ppu_check_obp0();
+static void gb_ppu_check_obp1();
+static void gb_ppu_check_lyc(uint8_t ly);
+static void gb_ppu_set_stat_mode(uint8_t mode);
+static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos);
+static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
+					uint16_t tile_data_addr, uint16_t display_addr);
+static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
+				    uint16_t display_addr);
+static void gb_ppu_draw_line_objects(uint8_t ly);
+static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy);
+static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
+					  uint16_t tile_data_addr, uint16_t display_addr);
+static uint16_t gb_ppu_get_background_window_tile_data_select();
+static uint16_t gb_ppu_get_background_tile_display_select();
+static uint16_t gb_ppu_get_window_tile_display_select();
 
 /**
  * @brief Sets function used in gb_ppu_draw_line() without needing to include
@@ -164,7 +164,7 @@ void gb_ppu_step(void)
  * referenced in STM32's L8 color mode.
  * @return Nothing
  */
-void gb_ppu_check_bgp()
+static void gb_ppu_check_bgp()
 {
 	uint8_t BGP = gb_memory_read(BGP_ADDR);
 	for (int i = 0; i < 4; i++) {
@@ -194,7 +194,7 @@ void gb_ppu_check_bgp()
  * STM32's L8 color mode.
  * @return Nothing
  */
-void gb_ppu_check_obp0()
+static void gb_ppu_check_obp0()
 {
 	uint8_t BGP = gb_memory_read(OBP0_ADDR);
 	for (int i = 0; i < 4; i++) {
@@ -224,7 +224,7 @@ void gb_ppu_check_obp0()
  * STM32's L8 color mode.
  * @return Nothing
  */
-void gb_ppu_check_obp1()
+static void gb_ppu_check_obp1()
 {
 	uint8_t BGP = gb_memory_read(OBP1_ADDR);
 	for (int i = 0; i < 4; i++) {
@@ -257,7 +257,7 @@ void gb_ppu_check_obp1()
  * in a real Gameboy, but it is much simpler to implement this way with
  * emulation, the  0x400 offset is accounted for in gb_ppu_get_tile_line_data()
  */
-uint16_t gb_ppu_get_background_window_tile_data_select()
+static uint16_t gb_ppu_get_background_window_tile_data_select()
 {
 	return (gb_memory_read(LCDC_ADDR) & 0x10) ? TILE_DATA_UNSIGNED_ADDR : TILE_DATA_SIGNED_ADDR;
 }
@@ -270,7 +270,7 @@ uint16_t gb_ppu_get_background_window_tile_data_select()
  * 0X9C00 on high or to 0x9800 on low.
  * @return Background Tile Display Select Address
  */
-uint16_t gb_ppu_get_background_tile_display_select()
+static uint16_t gb_ppu_get_background_tile_display_select()
 {
 	return (gb_memory_read(LCDC_ADDR) & 0x08) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
 }
@@ -283,7 +283,7 @@ uint16_t gb_ppu_get_background_tile_display_select()
  * 0X9C00 on high or to 0x9800 on low.
  * @return Window Tile Display Select Address
  */
-uint16_t gb_ppu_get_window_tile_display_select()
+static uint16_t gb_ppu_get_window_tile_display_select()
 {
 	return (gb_memory_read(LCDC_ADDR) & 0x40) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
 }
@@ -299,8 +299,8 @@ uint16_t gb_ppu_get_window_tile_display_select()
  * @return uint16_t data containing the color information of each pixel of a
  * particular line belonging to a tile in the Gameboy's VRAM
  */
-uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
-				   uint16_t tile_data_addr, uint16_t display_addr)
+static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
+					  uint16_t tile_data_addr, uint16_t display_addr)
 {
 	if (tile_data_addr == 0x8000) {
 		return gb_memory_read_short(tile_data_addr +
@@ -320,7 +320,7 @@ uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
  * @param ly value of the LY Register
  * @return Nothing
  */
-void gb_ppu_check_lyc(uint8_t ly)
+static void gb_ppu_check_lyc(uint8_t ly)
 {
 	if (ly == gb_memory_read(LYC_ADDR)) {
 		gb_memory_set_bit(STAT_ADDR, 2);
@@ -336,7 +336,7 @@ void gb_ppu_check_lyc(uint8_t ly)
  * @param mode current status of the LCD controller
  * @return Nothing
  */
-void gb_ppu_set_stat_mode(uint8_t mode)
+static void gb_ppu_set_stat_mode(uint8_t mode)
 {
 	stat_mode = mode;
 	switch (mode) {
@@ -369,7 +369,7 @@ void gb_ppu_set_stat_mode(uint8_t mode)
  * @param pixel_pos X position for the current pixel
  * @returns Nothing
  */
-void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
+static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
 {
 	pixel_pos *= ulScaleAmount;
 	for (int xStretch = 0; xStretch < ulScaleAmount; xStretch++) {
@@ -390,8 +390,8 @@ void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
  * displayed on Screen
  * @returns Nothing
  */
-void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy, uint16_t tile_data_addr,
-				 uint16_t display_addr)
+static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
+					uint16_t tile_data_addr, uint16_t display_addr)
 {
 	uint16_t tile_offset = (((uint8_t)(scy + ly) / 8) * 32) +
 			       (scx / 8); // gives the address offset in the tile map
@@ -455,8 +455,8 @@ void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy, uint16_t 
  * displayed on Screen
  * @returns Nothing
  */
-void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
-			     uint16_t display_addr)
+static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
+				    uint16_t display_addr)
 {
 	if (wy > ly || wy > 143 || wx > 166)
 		return;
@@ -510,7 +510,7 @@ void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_d
  * @param ly LY Register Value
  * @returns Nothing
  */
-void gb_ppu_draw_line_objects(uint8_t ly)
+static void gb_ppu_draw_line_objects(uint8_t ly)
 {
 	for (int obj = 0; obj < 40; obj++) {
 		// must be signed for logic to work
@@ -581,7 +581,7 @@ void gb_ppu_draw_line_objects(uint8_t ly)
  * @param scy Scroll Y Register Value
  * @returns Nothing
  */
-void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
+static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 {
 
 	// update Palettes

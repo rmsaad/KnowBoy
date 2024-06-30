@@ -15,10 +15,10 @@
 #include <string.h>
 
 // Audio buffers
-uint16_t *gb_papu_buf = NULL;
-uint16_t *gb_papu_buf_pos = NULL;
+static uint16_t *gb_papu_buf = NULL;
+static uint16_t *gb_papu_buf_pos = NULL;
 
-const uint8_t duties[4][8] = {
+static const uint8_t duties[4][8] = {
 	{0, 0, 0, 0, 0, 0, 0, 1}, // 00
 	{1, 0, 0, 0, 0, 0, 0, 1}, // 01
 	{1, 0, 0, 0, 0, 1, 1, 1}, // 10
@@ -26,62 +26,62 @@ const uint8_t duties[4][8] = {
 };
 
 // DAQ Status
-uint8_t ch1_daq_on = 0;
-uint8_t ch2_daq_on = 0;
-uint8_t ch4_daq_on = 0;
+static uint8_t ch1_daq_on = 0;
+static uint8_t ch2_daq_on = 0;
+static uint8_t ch4_daq_on = 0;
 
 // Length Counters
-uint8_t ch1_length_counter = 0;
-uint8_t ch2_length_counter = 0;
-uint8_t ch3_length_counter = 0;
-uint8_t ch4_length_counter = 0;
+static uint8_t ch1_length_counter = 0;
+static uint8_t ch2_length_counter = 0;
+static uint8_t ch3_length_counter = 0;
+static uint8_t ch4_length_counter = 0;
 
 // frequency timers
-int32_t ch1_timer = 0;
-int32_t ch2_timer = 0;
-int32_t ch3_timer = 0;
-int32_t ch4_timer = 0;
+static int32_t ch1_timer = 0;
+static int32_t ch2_timer = 0;
+static int32_t ch3_timer = 0;
+static int32_t ch4_timer = 0;
 
 // Volume Envelopes
-uint8_t ch1_envelope = 0;
-uint8_t ch2_envelope = 0;
-uint8_t ch3_envelope = 0;
-uint8_t ch4_envelope = 0;
+static uint8_t ch1_envelope = 0;
+static uint8_t ch2_envelope = 0;
+static uint8_t ch3_envelope = 0;
+static uint8_t ch4_envelope = 0;
 
 // Inital Volume of Envelope
-uint16_t ch1_volume = 0;
-uint16_t ch2_volume = 0;
-uint16_t ch3_volume = 0;
-uint16_t ch4_volume = 0;
+static uint16_t ch1_volume = 0;
+static uint16_t ch2_volume = 0;
+static uint16_t ch3_volume = 0;
+static uint16_t ch4_volume = 0;
 
 // 4.194 MHZ --> 44100 HZ Conversion (4.194 / 0.0441 = 95)
-uint8_t audio_freq_convert_factor = 95;
+static uint8_t audio_freq_convert_factor = 95;
 
 // Frame Sequence Step 0 - 7 (Incremented every 8192 T States)
-uint8_t frame_sequence_step = 0;
+static uint8_t frame_sequence_step = 0;
 
 // Frame Sequence TState (Incremented every T State up to 8192)
-uint16_t frame_sequence_cycle = 0;
+static uint16_t frame_sequence_cycle = 0;
 
 // CH1 & CH2 duty position (0 - 7)
-uint8_t ch1_duty_pos = 0;
-uint8_t ch2_duty_pos = 0;
-uint8_t ch3_wave_pos = 0;
+static uint8_t ch1_duty_pos = 0;
+static uint8_t ch2_duty_pos = 0;
+static uint8_t ch3_wave_pos = 0;
 
 // CH1 Sweep Period, Negate, Shift
-uint8_t ch1_sweep_enable = 0;
-uint8_t ch1_sweep_pace = 0;
-uint8_t ch1_sweep_dir = 0;
-uint32_t ch1_sweep_shadow = 0;
-int16_t ch1_sweep_step = 0;
-int16_t ch1_sweep_negate = 0;
+static uint8_t ch1_sweep_enable = 0;
+static uint8_t ch1_sweep_pace = 0;
+static uint8_t ch1_sweep_dir = 0;
+static uint32_t ch1_sweep_shadow = 0;
+static int16_t ch1_sweep_step = 0;
+static int16_t ch1_sweep_negate = 0;
 
-const uint8_t ch4_divisor[8] = {8, 16, 32, 48, 64, 80, 96, 112};
-uint16_t ch4_lfsr = 0;
+static const uint8_t ch4_divisor[8] = {8, 16, 32, 48, 64, 80, 96, 112};
+static uint16_t ch4_lfsr = 0;
 
 extern memory_t mem;
 
-void gb_papu_step_ch1(void)
+static void gb_papu_step_ch1(void)
 {
 
 	// length
@@ -161,7 +161,7 @@ void gb_papu_step_ch1(void)
 	}
 }
 
-void gb_papu_step_ch2(void)
+static void gb_papu_step_ch2(void)
 {
 	// length
 	if (frame_sequence_step % 2 == 0 && (mem.map[NR24_ADDR] & CH2_LEN_EN) &&
@@ -193,7 +193,7 @@ void gb_papu_step_ch2(void)
 	}
 }
 
-void gb_papu_step_ch3(void)
+static void gb_papu_step_ch3(void)
 {
 
 	//  handle length
@@ -206,7 +206,7 @@ void gb_papu_step_ch3(void)
 	}
 }
 
-void gb_papu_step_ch4(void)
+static void gb_papu_step_ch4(void)
 {
 
 	//  handle length

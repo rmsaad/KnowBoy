@@ -14,13 +14,13 @@
 
 #include <stdint.h>
 
-uint8_t gb_mbc_controller_code = 0;
-uint8_t gb_mbc_ram_enable = 0;
-uint8_t gb_mbc_offset_low = 0x01;
-uint8_t gb_mbc_offset_high = 0x0;
-uint8_t gb_mbc_bank_mode = 0x0;
+static uint8_t gb_mbc_controller_code = 0;
+static uint8_t gb_mbc_ram_enable = 0;
+static uint8_t gb_mbc_offset_low = 0x01;
+static uint8_t gb_mbc_offset_high = 0x0;
+static uint8_t gb_mbc_bank_mode = 0x0;
 
-extern const uint8_t *rom; // use the getROM() in gbmemory.c instead change and test this later
+extern const uint8_t *rom;
 
 void gbc_mbc_init(void)
 {
