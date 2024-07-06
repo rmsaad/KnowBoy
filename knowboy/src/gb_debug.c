@@ -23,11 +23,8 @@ typedef struct {
 
 static bool debugger_stopped = false;
 static breakpoints_t breakpoints;
-static gb_debug_mutex_lock_t mutex_lock;
-static gb_debug_mutex_unlock_t mutex_unlock;
-static gb_dequeue_t gb_dequeue;
-static void *gb_mutex;
-static void *gb_queue;
+static gb_debug_check_msg_queue_t gb_debug_check_queue;
+static void *gb_debug_queue_ctx;
 static bool proceed;
 static uint16_t prev_PC;
 extern memory_t mem;
@@ -109,23 +106,19 @@ void deactivate_all_breakpoints(breakpoints_t *bps)
 	}
 }
 
-void gb_debug_init(gb_debug_mutex_lock_t lock, gb_debug_mutex_unlock_t unlock, gb_dequeue_t dequeue,
-		   void *queue, void *mutex)
+void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, void *queue_ctx)
 {
 	debugger_stopped = false;
 	proceed = false;
-	mutex_lock = lock;
-	mutex_unlock = unlock;
-	gb_dequeue = dequeue;
-	gb_queue = queue;
-	gb_mutex = mutex;
+	gb_debug_check_queue = check_msg_queue;
+	gb_debug_queue_ctx = queue_ctx;
 	deactivate_all_breakpoints(&breakpoints);
 }
 
-static void gb_debug_parse_command()
+void gb_debug_check_msg_queue()
 {
 	char message[QUEUE_MSG_LEN];
-	if (gb_dequeue(gb_queue, message)) {
+	if (gb_debug_check_queue(gb_debug_queue_ctx, message)) {
 		if (strncmp(message, "stop", QUEUE_MSG_LEN) == 0) {
 			debugger_stopped = true;
 		} else if (strncmp(message, "continue", QUEUE_MSG_LEN) == 0) {
@@ -161,14 +154,7 @@ static void gb_debug_parse_command()
 	}
 }
 
-void gb_debug_check_queue()
-{
-	mutex_lock(gb_mutex);
-	gb_debug_parse_command();
-	mutex_unlock(gb_mutex);
-}
-
-bool gb_debug_step()
+bool gb_debug_step(void)
 {
 	if (proceed == true) {
 		if (mem.reg.PC == prev_PC) {
@@ -187,7 +173,7 @@ bool gb_debug_step()
 	}
 
 	if (debugger_stopped) {
-		gb_debug_check_queue();
+		gb_debug_check_msg_queue();
 	}
 
 	return debugger_stopped && !proceed;

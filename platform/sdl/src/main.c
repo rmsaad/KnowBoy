@@ -406,19 +406,29 @@ bool dequeue(message_queue_t *q, char *message)
 	return true;
 }
 
-int listen_to_stdin(void *gb_config)
+int listen_to_stdin(void *debug_ctx)
 {
 	char input[MESSAGE_LENGTH];
-	gb_config_t *config = gb_config;
+	gb_debug_t *gb_debug = debug_ctx;
 	while (true) {
 		if (fgets(input, sizeof(input), stdin) != NULL) {
 			input[strcspn(input, "\n")] = '\0';
-			SDL_LockMutex(config->debug.queue_mutex);
-			enqueue(&config->debug.queue, input);
-			SDL_UnlockMutex(config->debug.queue_mutex);
+			SDL_LockMutex(gb_debug->queue_mutex);
+			enqueue(&gb_debug->queue, input);
+			SDL_UnlockMutex(gb_debug->queue_mutex);
 		}
 	}
 	return 0;
+}
+
+bool check_queue(void *debug_ctx, char *message)
+{
+	bool message_present;
+	gb_debug_t *gb_debug = debug_ctx;
+	SDL_LockMutex(gb_debug->queue_mutex);
+	message_present = dequeue(&gb_debug->queue, message);
+	SDL_UnlockMutex(gb_debug->queue_mutex);
+	return message_present;
 }
 
 void menu_init(gb_config_t *gb_config)
@@ -600,9 +610,8 @@ int load_rom(gb_config_t *gb_config)
 		gb_config->debug.queue.rear = 0;
 		gb_config->debug.queue.count = 0;
 		SDL_Thread *thread_id =
-			SDL_CreateThread(listen_to_stdin, "stdinListener", gb_config);
-		gb_debug_init(SDL_LockMutex, SDL_UnlockMutex, dequeue, &gb_config->debug.queue,
-			      gb_config->debug.queue_mutex);
+			SDL_CreateThread(listen_to_stdin, "stdinListener", &gb_config->debug);
+		gb_debug_init(check_queue, &gb_config->debug);
 	}
 	gb_cpu_init();
 	gb_ppu_init();
@@ -615,7 +624,7 @@ int load_rom(gb_config_t *gb_config)
 
 int run_rom(gb_config_t *gb_config)
 {
-	gb_debug_check_queue();
+	gb_debug_check_msg_queue();
 	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		while (gb_debug_step()) {
 			if (gb_config->av.enable) {
