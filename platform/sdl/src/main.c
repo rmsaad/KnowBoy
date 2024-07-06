@@ -384,6 +384,43 @@ uint8_t controls_joypad(uint8_t *ucJoypadSELdir, uint8_t *ucJoypadSELbut)
 	return 0xC0 | (0xF ^ mask) | (*ucJoypadSELbut | *ucJoypadSELdir);
 }
 
+bool enqueue(message_queue_t *q, const char *message)
+{
+	if (q->count == QUEUE_SIZE) {
+		return false; // Queue is full
+	}
+	strncpy(q->messages[q->rear], message, MESSAGE_LENGTH);
+	q->rear = (q->rear + 1) % QUEUE_SIZE;
+	q->count++;
+	return true;
+}
+
+bool dequeue(message_queue_t *q, char *message)
+{
+	if (q->count == 0) {
+		return false;
+	}
+	strncpy(message, q->messages[q->front], MESSAGE_LENGTH);
+	q->front = (q->front + 1) % QUEUE_SIZE;
+	q->count--;
+	return true;
+}
+
+int listen_to_stdin(void *gb_config)
+{
+	char input[MESSAGE_LENGTH];
+	gb_config_t *config = gb_config;
+	while (true) {
+		if (fgets(input, sizeof(input), stdin) != NULL) {
+			input[strcspn(input, "\n")] = '\0';
+			SDL_LockMutex(config->debug.queue_mutex);
+			enqueue(&config->debug.queue, input);
+			SDL_UnlockMutex(config->debug.queue_mutex);
+		}
+	}
+	return 0;
+}
+
 void menu_init(gb_config_t *gb_config)
 {
 	if (TTF_Init() == -1) {
@@ -480,35 +517,6 @@ int init(gb_config_t *gb_config)
 	return 0;
 }
 
-int load_rom(gb_config_t *gb_config)
-{
-	if (gb_config->av.enable) {
-		SDL_PauseAudio(0);
-	}
-	gb_cpu_init();
-	gb_ppu_init();
-	gb_papu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
-	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
-	gb_memory_set_control_function(controls_joypad);
-	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
-	return 0;
-}
-
-int run_rom(gb_config_t *gb_config)
-{
-	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
-		gb_cpu_step();
-		gb_ppu_step();
-		gb_papu_step();
-	}
-
-	if (gb_config->av.enable) {
-		SDL_QueueAudio(1, gb_config->av.audio_buf, (gb_config->av.audio_buf_pos) * 2);
-	}
-	gb_config->av.audio_buf_pos = 0;
-	return 0;
-}
-
 void render_menu(gb_config_t *gb_config, gb_menu_t *gb_menu)
 {
 	if (gb_config->av.enable) {
@@ -579,6 +587,53 @@ void render_frame_buffer(gb_av_t *gb_av)
 		SDL_RenderCopy(gb_av->renderer, gb_av->texture, &src_rect, &dstRect);
 		SDL_RenderPresent(gb_av->renderer);
 	}
+}
+
+int load_rom(gb_config_t *gb_config)
+{
+	if (gb_config->av.enable) {
+		SDL_PauseAudio(0);
+	}
+	if (gb_config->debug.enable) {
+		gb_config->debug.queue_mutex = SDL_CreateMutex();
+		gb_config->debug.queue.front = 0;
+		gb_config->debug.queue.rear = 0;
+		gb_config->debug.queue.count = 0;
+		SDL_Thread *thread_id =
+			SDL_CreateThread(listen_to_stdin, "stdinListener", gb_config);
+		gb_debug_init(SDL_LockMutex, SDL_UnlockMutex, dequeue, &gb_config->debug.queue,
+			      gb_config->debug.queue_mutex);
+	}
+	gb_cpu_init();
+	gb_ppu_init();
+	gb_papu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
+	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
+	gb_memory_set_control_function(controls_joypad);
+	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
+	return 0;
+}
+
+int run_rom(gb_config_t *gb_config)
+{
+	gb_debug_check_queue();
+	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
+		while (gb_debug_step()) {
+			if (gb_config->av.enable) {
+				update_input(gb_config);
+				render_frame_buffer(&gb_config->av);
+				SDL_Delay(16);
+			}
+		}
+		gb_cpu_step();
+		gb_ppu_step();
+		gb_papu_step();
+	}
+
+	if (gb_config->av.enable) {
+		SDL_QueueAudio(1, gb_config->av.audio_buf, (gb_config->av.audio_buf_pos) * 2);
+	}
+	gb_config->av.audio_buf_pos = 0;
+	return 0;
 }
 
 void app_close(gb_av_t *gb_av)
@@ -680,6 +735,10 @@ int main(int argc, char *argv[])
 				.data = NULL,
 				.path = NULL,
 				.valid = false,
+			},
+		.debug =
+			{
+				.enable = true,
 			},
 		.state = MAIN_MENU,
 		.menu_skip = false,
