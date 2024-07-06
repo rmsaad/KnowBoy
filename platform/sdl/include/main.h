@@ -7,6 +7,8 @@
 
 #define MAX_MENU_OPTIONS 3
 #define AUDIO_BUF_SIZE	 32768
+#define QUEUE_SIZE	 10
+#define MESSAGE_LENGTH	 50
 
 typedef struct {
 	bool enable;
@@ -47,6 +49,19 @@ typedef enum {
 } gb_state_t;
 
 typedef struct {
+	char messages[QUEUE_SIZE][MESSAGE_LENGTH];
+	int front;
+	int rear;
+	int count;
+} message_queue_t;
+
+typedef struct {
+	bool enable;
+	message_queue_t queue;
+	SDL_mutex *queue_mutex;
+} gb_debug_t;
+
+typedef struct {
 	gb_av_t av;
 	gb_font_t font;
 	gb_menu_t main_menu;
@@ -54,6 +69,7 @@ typedef struct {
 	gb_rom_t game_rom;
 	gb_rom_t boot_rom;
 	gb_state_t state;
+	gb_debug_t debug;
 	bool menu_skip;
 	bool boot_skip;
 	const char *cache_file;
