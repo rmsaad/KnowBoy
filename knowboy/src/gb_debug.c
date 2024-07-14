@@ -21,13 +21,14 @@ typedef struct {
 	bool activated[MAX_BREAKPOINTS];
 } breakpoints_t;
 
-static bool debugger_stopped = false;
+static bool debugger_stopped;
 static breakpoints_t breakpoints;
 static gb_debug_check_msg_queue_t gb_debug_check_queue;
 static void *gb_debug_queue_ctx;
 static bool proceed;
 static uint16_t prev_PC;
 extern memory_t mem;
+extern uint8_t op_remaining;
 
 static bool strict_natoi(char *str, int len, uint16_t *result)
 {
@@ -157,7 +158,7 @@ void gb_debug_check_msg_queue()
 bool gb_debug_step(void)
 {
 	if (proceed == true) {
-		if (mem.reg.PC == prev_PC) {
+		if (mem.reg.PC == prev_PC || op_remaining > 0) {
 			return false;
 		} else {
 			proceed = false;
