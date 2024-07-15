@@ -17,7 +17,7 @@
 typedef bool (*gb_debug_check_msg_queue_t)(void *, char *);
 
 void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, void *queue_ctx);
-void gb_debug_check_msg_queue();
-bool gb_debug_step();
+void gb_debug_check_msg_queue(void);
+bool gb_debug_step(void);
 
 #endif /* INCLUDE_GB_DEBUG_H_ */
