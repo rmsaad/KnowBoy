@@ -29,7 +29,7 @@ static bool proceed;
 static uint16_t prev_PC;
 extern memory_t mem;
 
-static bool strict_natoi(char *str, int len, uint16_t *result)
+static bool gb_debug_parse_address(char *str, int len, uint16_t *result)
 {
 	int num = 0;
 	int i = 0;
@@ -68,7 +68,7 @@ static bool strict_natoi(char *str, int len, uint16_t *result)
 	return is_valid;
 }
 
-int get_next_free_breakpoint(breakpoints_t *bps)
+static int gb_debug_get_free_breakpoint(breakpoints_t *bps)
 {
 	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
 		if (!bps->activated[i]) {
@@ -78,7 +78,7 @@ int get_next_free_breakpoint(breakpoints_t *bps)
 	return -1;
 }
 
-bool deactivate_breakpoint(breakpoints_t *bps, uint16_t address)
+static bool gb_debug_deactivate_breakpoint(breakpoints_t *bps, uint16_t address)
 {
 	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
 		if (bps->address[i] == address && bps->activated[i]) {
@@ -89,7 +89,7 @@ bool deactivate_breakpoint(breakpoints_t *bps, uint16_t address)
 	return false;
 }
 
-bool is_breakpoint_activated(breakpoints_t *bps, uint16_t address)
+static bool gb_debug_is_breakpoint_activated(breakpoints_t *bps, uint16_t address)
 {
 	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
 		if (bps->address[i] == address && bps->activated[i]) {
@@ -99,7 +99,7 @@ bool is_breakpoint_activated(breakpoints_t *bps, uint16_t address)
 	return false;
 }
 
-void deactivate_all_breakpoints(breakpoints_t *bps)
+static void gb_debug_deactivate_all_breakpoints(breakpoints_t *bps)
 {
 	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
 		bps->activated[i] = false;
@@ -112,10 +112,10 @@ void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, void *queue_ctx)
 	proceed = false;
 	gb_debug_check_queue = check_msg_queue;
 	gb_debug_queue_ctx = queue_ctx;
-	deactivate_all_breakpoints(&breakpoints);
+	gb_debug_deactivate_all_breakpoints(&breakpoints);
 }
 
-void gb_debug_check_msg_queue()
+void gb_debug_check_msg_queue(void)
 {
 	char message[QUEUE_MSG_LEN];
 	if (gb_debug_check_queue(gb_debug_queue_ctx, message)) {
@@ -132,10 +132,11 @@ void gb_debug_check_msg_queue()
 				mem.reg.HL, mem.reg.SP);
 		} else if (strncmp(message, "break", sizeof("break") - 1) == 0) {
 			uint16_t address;
-			bool valid = strict_natoi(&message[sizeof("break")],
-						  QUEUE_MSG_LEN - (sizeof("break")), &address);
-			if (valid && !is_breakpoint_activated(&breakpoints, address)) {
-				int index = get_next_free_breakpoint(&breakpoints);
+			bool valid =
+				gb_debug_parse_address(&message[sizeof("break")],
+						       QUEUE_MSG_LEN - (sizeof("break")), &address);
+			if (valid && !gb_debug_is_breakpoint_activated(&breakpoints, address)) {
+				int index = gb_debug_get_free_breakpoint(&breakpoints);
 				if (index < 0) {
 					LOG_ERR("No more breakpoints availible");
 					return;
@@ -145,10 +146,11 @@ void gb_debug_check_msg_queue()
 			}
 		} else if (strncmp(message, "delete", sizeof("delete") - 1) == 0) {
 			uint16_t address;
-			bool valid = strict_natoi(&message[sizeof("delete")],
-						  QUEUE_MSG_LEN - (sizeof("delete")), &address);
-			if (valid && is_breakpoint_activated(&breakpoints, address)) {
-				deactivate_breakpoint(&breakpoints, address);
+			bool valid = gb_debug_parse_address(&message[sizeof("delete")],
+							    QUEUE_MSG_LEN - (sizeof("delete")),
+							    &address);
+			if (valid && gb_debug_is_breakpoint_activated(&breakpoints, address)) {
+				gb_debug_deactivate_breakpoint(&breakpoints, address);
 			}
 		}
 	}
