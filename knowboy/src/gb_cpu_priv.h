@@ -147,10 +147,10 @@ static inline void gb_cpu_pop_from_stack(uint16_t *reg_sp, uint16_t *reg_16)
 }
 
 /*Pushes 16 bit register onto stack */
-static inline void gb_cpu_push_to_stack(uint16_t *reg_sp, uint16_t *reg_16)
+static inline void gb_cpu_push_to_stack(uint16_t *reg_sp, uint16_t reg_16)
 {
-	gb_memory_write(*reg_sp - 1, (uint8_t)((*reg_16 & 0xFF00) >> 8));
-	gb_memory_write(*reg_sp - 2, (uint8_t)(*reg_16 & 0x00FF));
+	gb_memory_write(*reg_sp - 1, (uint8_t)((reg_16 & 0xFF00) >> 8));
+	gb_memory_write(*reg_sp - 2, (uint8_t)(reg_16 & 0x00FF));
 	*reg_sp -= 2;
 }
 

@@ -19,11 +19,11 @@ static uint8_t stopped = 0;
 static uint8_t halted = 0;
 static uint8_t interrupt_master_enable = 0;
 static uint8_t one_cycle_interrupt_delay = 0;
-uint8_t op_remaining = 0;
+static uint8_t op_remaining = 0;
 static int interupt_dur = 0;
 static uint8_t opcode = 0;
 static uint8_t current_cycle = 0;
-
+static bool dont_update_pc = false;
 extern memory_t mem;
 
 /* Game Boy CPU instruction set */
@@ -550,7 +550,7 @@ static void gb_cpu_NOP(gb_instr_info_t *info)
 static void gb_cpu_LOAD_BC_d16(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.BC = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	mem.reg.BC = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_LOAD_BC_A(gb_instr_info_t *info)
@@ -580,7 +580,7 @@ static void gb_cpu_DEC_B(gb_instr_info_t *info)
 static void gb_cpu_LOAD_B_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.B = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.B = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_RLCA(gb_instr_info_t *info)
@@ -596,7 +596,7 @@ static void gb_cpu_LOAD_a16_SP(gb_instr_info_t *info)
 {
 	(void)info;
 	gb_memory_write_short(
-		CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1)),
+		CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2)),
 		mem.reg.SP);
 }
 
@@ -633,7 +633,7 @@ static void gb_cpu_DEC_C(gb_instr_info_t *info)
 static void gb_cpu_LOAD_C_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.C = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.C = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_RRCA(gb_instr_info_t *info)
@@ -657,7 +657,7 @@ static void gb_cpu_STOP(gb_instr_info_t *info)
 static void gb_cpu_LOAD_DE_d16(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.DE = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	mem.reg.DE = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_LOAD_DE_A(gb_instr_info_t *info)
@@ -687,7 +687,7 @@ static void gb_cpu_DEC_D(gb_instr_info_t *info)
 static void gb_cpu_LOAD_D_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.D = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.D = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_RLA(gb_instr_info_t *info)
@@ -702,7 +702,7 @@ static void gb_cpu_RLA(gb_instr_info_t *info)
 static void gb_cpu_JR_r8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.PC += (int8_t)gb_memory_read(mem.reg.PC - 1);
+	mem.reg.PC += (int8_t)gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_ADD_HL_DE(gb_instr_info_t *info)
@@ -738,7 +738,7 @@ static void gb_cpu_DEC_E(gb_instr_info_t *info)
 static void gb_cpu_LOAD_E_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.E = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.E = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_RRA(gb_instr_info_t *info)
@@ -756,7 +756,7 @@ static void gb_cpu_JR_NZ_r8(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 2 : 3;
 	} else if (info->current_cycle == 3) {
-		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC - 1);
+		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC + 1);
 		mem.reg.PC += r8_val;
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -765,7 +765,7 @@ static void gb_cpu_JR_NZ_r8(gb_instr_info_t *info)
 static void gb_cpu_LOAD_HL_d16(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.HL = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	mem.reg.HL = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_LOAD_HLI_A(gb_instr_info_t *info)
@@ -796,7 +796,7 @@ static void gb_cpu_DEC_H(gb_instr_info_t *info)
 static void gb_cpu_LOAD_H_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.H = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.H = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_DAA(gb_instr_info_t *info)
@@ -828,7 +828,7 @@ static void gb_cpu_JR_Z_r8(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 3 : 2;
 	} else if (info->current_cycle == 3) {
-		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC - 1);
+		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC + 1);
 		mem.reg.PC += r8_val;
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -868,7 +868,7 @@ static void gb_cpu_DEC_L(gb_instr_info_t *info)
 static void gb_cpu_LOAD_L_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.L = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.L = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_CPL(gb_instr_info_t *info)
@@ -886,7 +886,7 @@ static void gb_cpu_JR_NC_r8(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 2 : 3;
 	} else if (info->current_cycle == 3) {
-		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC - 1);
+		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC + 1);
 		mem.reg.PC += r8_val;
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -895,7 +895,7 @@ static void gb_cpu_JR_NC_r8(gb_instr_info_t *info)
 static void gb_cpu_LOAD_SP_d16(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.SP = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	mem.reg.SP = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_LOAD_HLD_A(gb_instr_info_t *info)
@@ -948,7 +948,7 @@ static void gb_cpu_DEC_HL_ADDR(gb_instr_info_t *info)
 static void gb_cpu_LOAD_HL_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_memory_write(mem.reg.HL, gb_memory_read(mem.reg.PC - 1));
+	gb_memory_write(mem.reg.HL, gb_memory_read(mem.reg.PC + 1));
 }
 
 static void gb_cpu_SCF(gb_instr_info_t *info)
@@ -964,7 +964,7 @@ static void gb_cpu_JR_C_r8(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 3 : 2;
 	} else if (info->current_cycle == 3) {
-		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC - 1);
+		int8_t r8_val = (int8_t)gb_memory_read(mem.reg.PC + 1);
 		mem.reg.PC += r8_val;
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -1004,7 +1004,7 @@ static void gb_cpu_DEC_A(gb_instr_info_t *info)
 static void gb_cpu_LOAD_A_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.A = gb_memory_read(mem.reg.PC - 1);
+	mem.reg.A = gb_memory_read(mem.reg.PC + 1);
 }
 
 static void gb_cpu_CCF(gb_instr_info_t *info)
@@ -1827,6 +1827,7 @@ static void gb_cpu_RET_NZ(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT)) ? 2 : 5;
 	} else if (info->current_cycle == 5) {
+		dont_update_pc = true;
 		gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -1843,8 +1844,9 @@ static void gb_cpu_JP_NZ_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 3 : 4;
 	} else if (info->current_cycle == 4) {
+		dont_update_pc = true;
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -1852,7 +1854,8 @@ static void gb_cpu_JP_NZ_a16(gb_instr_info_t *info)
 static void gb_cpu_JP_a16(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.PC = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	dont_update_pc = true;
+	mem.reg.PC = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_CALL_NZ_a16(gb_instr_info_t *info)
@@ -1860,9 +1863,10 @@ static void gb_cpu_CALL_NZ_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 3 : 6;
 	} else if (info->current_cycle == 6) {
-		gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+		dont_update_pc = true;
+		gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -1870,20 +1874,21 @@ static void gb_cpu_CALL_NZ_a16(gb_instr_info_t *info)
 static void gb_cpu_PUSH_BC(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.BC);
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.BC);
 }
 
 static void gb_cpu_ADD_A_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t temp_res = gb_memory_read(mem.reg.PC - 1);
+	uint8_t temp_res = gb_memory_read(mem.reg.PC + 1);
 	gb_cpu_addition_A_register(&mem.reg.A, &mem.reg.F, &temp_res);
 }
 
 static void gb_cpu_RST_00H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0000;
 }
 
@@ -1892,6 +1897,7 @@ static void gb_cpu_RET_Z(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT)) ? 5 : 2;
 	} else if (info->current_cycle == 5) {
+		dont_update_pc = true;
 		gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -1900,6 +1906,7 @@ static void gb_cpu_RET_Z(gb_instr_info_t *info)
 static void gb_cpu_RET(gb_instr_info_t *info)
 {
 	(void)info;
+	dont_update_pc = true;
 	gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 }
 
@@ -1908,15 +1915,16 @@ static void gb_cpu_JP_Z_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 4 : 3;
 	} else if (info->current_cycle == 4) {
+		dont_update_pc = true;
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
 
 static void gb_cpu_PREFIX(gb_instr_info_t *info)
 {
-	((void (*)(gb_instr_info_t *))prefix_instructions[gb_memory_read(mem.reg.PC - 1)].instr)(
+	((void (*)(gb_instr_info_t *))prefix_instructions[gb_memory_read(mem.reg.PC + 1)].instr)(
 		info);
 }
 
@@ -1925,9 +1933,10 @@ static void gb_cpu_CALL_Z_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, Z_FLAG_BIT) != 0) ? 6 : 3;
 	} else if (info->current_cycle == 6) {
-		gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+		dont_update_pc = true;
+		gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -1935,21 +1944,23 @@ static void gb_cpu_CALL_Z_a16(gb_instr_info_t *info)
 static void gb_cpu_CALL_a16(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
-	mem.reg.PC = CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
+	mem.reg.PC = CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 }
 
 static void gb_cpu_ADC_A_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t temp_res = gb_memory_read(mem.reg.PC - 1);
+	uint8_t temp_res = gb_memory_read(mem.reg.PC + 1);
 	gb_cpu_addition_carry_A_register(&mem.reg.A, &mem.reg.F, &temp_res);
 }
 
 static void gb_cpu_RST_08H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0008;
 }
 
@@ -1960,6 +1971,7 @@ static void gb_cpu_RET_NC(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT)) ? 2 : 5;
 	} else if (info->current_cycle == 5) {
+		dont_update_pc = true;
 		gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -1976,8 +1988,9 @@ static void gb_cpu_JP_NC_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 3 : 4;
 	} else if (info->current_cycle == 4) {
+		dont_update_pc = true;
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -1988,9 +2001,10 @@ static void gb_cpu_CALL_NC_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 3 : 6;
 	} else if (info->current_cycle == 6) {
-		gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+		dont_update_pc = true;
+		gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -1998,20 +2012,21 @@ static void gb_cpu_CALL_NC_a16(gb_instr_info_t *info)
 static void gb_cpu_PUSH_DE(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.DE);
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.DE);
 }
 
 static void gb_cpu_SUB_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t temp_res = gb_memory_read(mem.reg.PC - 1);
+	uint8_t temp_res = gb_memory_read(mem.reg.PC + 1);
 	gb_cpu_subtraction_A_register(&mem.reg.A, &mem.reg.F, &temp_res);
 }
 
 static void gb_cpu_RST_10H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0010;
 }
 
@@ -2020,6 +2035,7 @@ static void gb_cpu_RET_C(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT)) ? 5 : 2;
 	} else if (info->current_cycle == 5) {
+		dont_update_pc = true;
 		gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 	}
 	info->current_cycle = CUSTOM_TIMING;
@@ -2029,6 +2045,7 @@ static void gb_cpu_RETI(gb_instr_info_t *info)
 {
 	(void)info;
 	interrupt_master_enable = 1;
+	dont_update_pc = true;
 	gb_cpu_return_from_stack(&mem.reg.SP, &mem.reg.PC);
 }
 
@@ -2037,8 +2054,9 @@ static void gb_cpu_JP_C_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 4 : 3;
 	} else if (info->current_cycle == 4) {
+		dont_update_pc = true;
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -2049,9 +2067,10 @@ static void gb_cpu_CALL_C_a16(gb_instr_info_t *info)
 	if (info->current_cycle == 1) {
 		op_remaining = (CHK_BIT(mem.reg.F, C_FLAG_BIT) != 0) ? 6 : 3;
 	} else if (info->current_cycle == 6) {
-		gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+		dont_update_pc = true;
+		gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 		mem.reg.PC =
-			CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1));
+			CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2));
 	}
 	info->current_cycle = CUSTOM_TIMING;
 }
@@ -2060,14 +2079,15 @@ static void gb_cpu_CALL_C_a16(gb_instr_info_t *info)
 static void gb_cpu_SBC_A_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t temp_res = gb_memory_read(mem.reg.PC - 1);
+	uint8_t temp_res = gb_memory_read(mem.reg.PC + 1);
 	gb_cpu_subtraction_carry_A_register(&mem.reg.A, &mem.reg.F, &temp_res);
 }
 
 static void gb_cpu_RST_18H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0018;
 }
 
@@ -2075,7 +2095,7 @@ static void gb_cpu_RST_18H(gb_instr_info_t *info)
 static void gb_cpu_LOAD_a8_A(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_memory_write(0xFF00 + gb_memory_read(mem.reg.PC - 1), mem.reg.A);
+	gb_memory_write(0xFF00 + gb_memory_read(mem.reg.PC + 1), mem.reg.A);
 }
 
 static void gb_cpu_POP_HL(gb_instr_info_t *info)
@@ -2095,27 +2115,28 @@ static void gb_cpu_LOAD_fC_A(gb_instr_info_t *info)
 static void gb_cpu_PUSH_HL(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.HL);
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.HL);
 }
 
 static void gb_cpu_AND_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.A &= gb_memory_read(mem.reg.PC - 1);
+	mem.reg.A &= gb_memory_read(mem.reg.PC + 1);
 	mem.reg.F = (mem.reg.A == 0) ? 0xA0 : 0x20;
 }
 
 static void gb_cpu_RST20H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0020;
 }
 
 static void gb_cpu_ADD_SP_r8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t r8_val = gb_memory_read(mem.reg.PC - 1);
+	uint8_t r8_val = gb_memory_read(mem.reg.PC + 1);
 	uint32_t temp_res = mem.reg.SP + r8_val;
 	((temp_res & 0xFF) < (mem.reg.SP & 0xFF)) ? SET_BIT(mem.reg.F, C_FLAG_BIT)
 						  : RST_BIT(mem.reg.F, C_FLAG_BIT);
@@ -2129,13 +2150,14 @@ static void gb_cpu_ADD_SP_r8(gb_instr_info_t *info)
 static void gb_cpu_JP_HL(gb_instr_info_t *info)
 {
 	(void)info;
+	dont_update_pc = true;
 	mem.reg.PC = mem.reg.HL;
 }
 
 static void gb_cpu_LOAD_a16_A(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_memory_write(CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1)),
+	gb_memory_write(CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2)),
 			mem.reg.A);
 }
 
@@ -2145,14 +2167,15 @@ static void gb_cpu_LOAD_a16_A(gb_instr_info_t *info)
 static void gb_cpu_XOR_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.A ^= gb_memory_read(mem.reg.PC - 1);
+	mem.reg.A ^= gb_memory_read(mem.reg.PC + 1);
 	mem.reg.F = (mem.reg.A == 0) ? 0x80 : 0x00;
 }
 
 static void gb_cpu_RST_28H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0028;
 }
 
@@ -2160,7 +2183,7 @@ static void gb_cpu_RST_28H(gb_instr_info_t *info)
 static void gb_cpu_LOAD_A_a8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.A = gb_memory_read(0xFF00 + gb_memory_read(mem.reg.PC - 1));
+	mem.reg.A = gb_memory_read(0xFF00 + gb_memory_read(mem.reg.PC + 1));
 }
 
 static void gb_cpu_POP_AF(gb_instr_info_t *info)
@@ -2186,27 +2209,28 @@ static void gb_cpu_DI(gb_instr_info_t *info)
 static void gb_cpu_PUSH_AF(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.AF);
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.AF);
 }
 
 static void gb_cpu_OR_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	mem.reg.A |= gb_memory_read(mem.reg.PC - 1);
+	mem.reg.A |= gb_memory_read(mem.reg.PC + 1);
 	mem.reg.F = (mem.reg.A == 0) ? 0x80 : 0x00;
 }
 
 static void gb_cpu_RST_30H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0030;
 }
 
 static void gb_cpu_LOAD_HL_SP_r8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t r8_val = gb_memory_read(mem.reg.PC - 1);
+	uint8_t r8_val = gb_memory_read(mem.reg.PC + 1);
 	uint32_t temp_res = mem.reg.SP + r8_val;
 	((temp_res & 0xFF) < (mem.reg.SP & 0xFF)) ? SET_BIT(mem.reg.F, C_FLAG_BIT)
 						  : RST_BIT(mem.reg.F, C_FLAG_BIT);
@@ -2227,7 +2251,7 @@ static void gb_cpu_LOAD_A_a16(gb_instr_info_t *info)
 {
 	(void)info;
 	mem.reg.A = gb_memory_read(
-		CAT_BYTES(gb_memory_read(mem.reg.PC - 2), gb_memory_read(mem.reg.PC - 1)));
+		CAT_BYTES(gb_memory_read(mem.reg.PC + 1), gb_memory_read(mem.reg.PC + 2)));
 }
 
 static void gb_cpu_EI(gb_instr_info_t *info)
@@ -2241,13 +2265,14 @@ static void gb_cpu_EI(gb_instr_info_t *info)
 static void gb_cpu_CP_d8(gb_instr_info_t *info)
 {
 	(void)info;
-	uint8_t temp_res = gb_memory_read(mem.reg.PC - 1);
+	uint8_t temp_res = gb_memory_read(mem.reg.PC + 1);
 	gb_cpu_compare_A_register(&mem.reg.A, &mem.reg.F, &temp_res);
 }
 static void gb_cpu_RST_38H(gb_instr_info_t *info)
 {
 	(void)info;
-	gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+	dont_update_pc = true;
+	gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC + info->bytes);
 	mem.reg.PC = 0x0038;
 }
 
@@ -3997,27 +4022,27 @@ static void gb_cpu_interrupt_handler(int *interupt_dur)
 				gb_memory_read(IE_ADDR) & gb_memory_read(IF_ADDR);
 			if (interrupt_set_and_enabled & VBLANK_INTERRUPT) {
 				gb_memory_reset_bit(IF_ADDR, 0);
-				gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+				gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC);
 				interrupt_triggered = 1;
 				mem.reg.PC = VBLANK_VECTOR;
 			} else if (interrupt_set_and_enabled & LCDSTAT_INTERRUPT) {
 				gb_memory_reset_bit(IF_ADDR, 1);
-				gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+				gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC);
 				interrupt_triggered = 1;
 				mem.reg.PC = LCDSTAT_VECTOR;
 			} else if (interrupt_set_and_enabled & TIMER_INTERRUPT) {
 				gb_memory_reset_bit(IF_ADDR, 2);
-				gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+				gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC);
 				interrupt_triggered = 1;
 				mem.reg.PC = TIMER_VECTOR;
 			} else if (interrupt_set_and_enabled & SERIAL_INTERRUPT) {
 				gb_memory_reset_bit(IF_ADDR, 3);
-				gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+				gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC);
 				interrupt_triggered = 1;
 				mem.reg.PC = SERIAL_VECTOR;
 			} else if (interrupt_set_and_enabled & JOYPAD_INTERRUPT) {
 				gb_memory_reset_bit(IF_ADDR, 4);
-				gb_cpu_push_to_stack(&mem.reg.SP, &mem.reg.PC);
+				gb_cpu_push_to_stack(&mem.reg.SP, mem.reg.PC);
 				interrupt_triggered = 1;
 				mem.reg.PC = JOYPAD_VECTOR;
 			}
@@ -4086,20 +4111,19 @@ void gb_cpu_step(void)
 	static uint8_t next_instruction = 0;
 	static gb_instr_t *intstruction_table = NULL;
 
-	/* IF not halted */
+	/* if halted */
 	if (halted) {
 		goto finally;
 	}
 
 	if (interupt_dur) {
 		interupt_dur--;
-		op_remaining++;
 		goto finally;
 	}
 
 	/* if no remaining op */
 	if (op_remaining <= 0) {
-
+		dont_update_pc = false;
 		next_instruction = gb_memory_read(mem.reg.PC);
 		if (next_instruction != PREFIX_OPCODE) {
 			opcode = next_instruction;
@@ -4108,8 +4132,6 @@ void gb_cpu_step(void)
 			opcode = gb_memory_read(mem.reg.PC + 1);
 			intstruction_table = prefix_instructions;
 		}
-
-		mem.reg.PC += intstruction_table[opcode].info.bytes;
 		op_remaining = intstruction_table[opcode].info.cycles;
 		current_cycle = 1;
 	}
@@ -4126,12 +4148,16 @@ void gb_cpu_step(void)
 	}
 	current_cycle++;
 
+	/* dec op remaining */
+	op_remaining--;
+
+	if (op_remaining == 0 && dont_update_pc == false) {
+		mem.reg.PC += intstruction_table[opcode].info.bytes;
+	}
+
 finally:
 	/* Inc timers */
 	gb_memory_inc_timers(1);
-
-	/* dec op remaining */
-	op_remaining--;
 
 	/* Handle interupts */
 	if (interrupt_master_enable == 1 && op_remaining == 0) {
