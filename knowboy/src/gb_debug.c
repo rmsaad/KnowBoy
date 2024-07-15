@@ -24,6 +24,7 @@ typedef struct {
 static bool debugger_stopped;
 static breakpoints_t breakpoints;
 static gb_debug_check_msg_queue_t gb_debug_check_queue;
+static gb_debug_flush_t gb_debug_flush;
 static void *gb_debug_queue_ctx;
 static bool proceed;
 static uint16_t prev_PC;
@@ -106,12 +107,14 @@ static void gb_debug_deactivate_all_breakpoints(breakpoints_t *bps)
 	}
 }
 
-void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, void *queue_ctx)
+void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, gb_debug_flush_t flush,
+		   void *queue_ctx)
 {
 	debugger_stopped = false;
 	proceed = false;
 	gb_debug_check_queue = check_msg_queue;
 	gb_debug_queue_ctx = queue_ctx;
+	gb_debug_flush = flush;
 	gb_debug_deactivate_all_breakpoints(&breakpoints);
 }
 
@@ -153,6 +156,7 @@ void gb_debug_check_msg_queue(void)
 				gb_debug_deactivate_breakpoint(&breakpoints, address);
 			}
 		}
+		gb_debug_flush();
 	}
 }
 
