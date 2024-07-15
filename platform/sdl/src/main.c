@@ -13,6 +13,7 @@
 
 // gameboyLib
 #include "gb_cpu.h"
+#include "gb_debug.h"
 #include "gb_mbc.h"
 #include "gb_memory.h"
 #include "gb_papu.h"
@@ -23,6 +24,8 @@
 static uint8_t dir_input = 0;
 static uint8_t but_input = 0;
 static uint32_t framebuffer[GAMEBOY_SCREEN_HEIGHT * GAMEBOY_SCREEN_WIDTH] = {0};
+
+int load_rom(gb_config_t *gb_config);
 
 char *find_value_for_name(const char *file_path, const char *name)
 {
