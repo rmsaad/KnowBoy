@@ -15,8 +15,10 @@
 #define QUEUE_MSG_LEN 50
 
 typedef bool (*gb_debug_check_msg_queue_t)(void *, char *);
+typedef void (*gb_debug_flush_t)(void);
 
-void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, void *queue_ctx);
+void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, gb_debug_flush_t flush,
+		   void *queue_ctx);
 void gb_debug_check_msg_queue(void);
 bool gb_debug_step(void);
 

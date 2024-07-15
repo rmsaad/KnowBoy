@@ -410,6 +410,7 @@ int listen_to_stdin(void *debug_ctx)
 {
 	char input[MESSAGE_LENGTH];
 	gb_debug_t *gb_debug = debug_ctx;
+	printf("> ");
 	while (true) {
 		if (fgets(input, sizeof(input), stdin) != NULL) {
 			input[strcspn(input, "\n")] = '\0';
@@ -429,6 +430,12 @@ bool check_queue(void *debug_ctx, char *message)
 	message_present = dequeue(&gb_debug->queue, message);
 	SDL_UnlockMutex(gb_debug->queue_mutex);
 	return message_present;
+}
+
+void flush_stdout(void)
+{
+	printf("> ");
+	fflush(stdout);
 }
 
 void menu_init(gb_config_t *gb_config)
@@ -611,7 +618,7 @@ int load_rom(gb_config_t *gb_config)
 		gb_config->debug.queue.count = 0;
 		SDL_Thread *thread_id =
 			SDL_CreateThread(listen_to_stdin, "stdinListener", &gb_config->debug);
-		gb_debug_init(check_queue, &gb_config->debug);
+		gb_debug_init(check_queue, flush_stdout, &gb_config->debug);
 	}
 	gb_cpu_init();
 	gb_ppu_init();
