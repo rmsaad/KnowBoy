@@ -282,12 +282,86 @@ uint8_t gb_memory_read(uint16_t address)
 	}
 
 	else if (address >= IO_BASE) {
-		if (address == JOY_ADDR) {
+		switch (address) {
+		case JOY_ADDR:
 			return gb_memory_joypad();
-		}
-
-		if (address == SB_ADDR) {
+		case SB_ADDR:
 			return 0xFF;
+		case NR10_ADDR:
+			return 0x80 | mem.map[address];
+		case NR11_ADDR:
+			return 0x3F | mem.map[address];
+		case NR12_ADDR:
+			return 0x00 | mem.map[address];
+		case NR13_ADDR:
+			return 0xFF | mem.map[address];
+		case NR14_ADDR:
+			return 0xBF | mem.map[address];
+		case NR20_ADDR:
+			return 0xFF | mem.map[address];
+		case NR21_ADDR:
+			return 0x3F | mem.map[address];
+		case NR22_ADDR:
+			return 0x00 | mem.map[address];
+		case NR23_ADDR:
+			return 0xFF | mem.map[address];
+		case NR24_ADDR:
+			return 0xBF | mem.map[address];
+		case NR30_ADDR:
+			return 0x7F | mem.map[address];
+		case NR31_ADDR:
+			return 0xFF | mem.map[address];
+		case NR32_ADDR:
+			return 0x9F | mem.map[address];
+		case NR33_ADDR:
+			return 0xFF | mem.map[address];
+		case NR34_ADDR:
+			return 0xBF | mem.map[address];
+		case NR40_ADDR:
+			return 0xFF | mem.map[address];
+		case NR41_ADDR:
+			return 0xFF | mem.map[address];
+		case NR42_ADDR:
+			return 0x00 | mem.map[address];
+		case NR43_ADDR:
+			return 0x00 | mem.map[address];
+		case NR44_ADDR:
+			return 0xBF | mem.map[address];
+		case NR50_ADDR:
+			return 0x00 | mem.map[address];
+		case NR51_ADDR:
+			return 0x00 | mem.map[address];
+		case NR52_ADDR:
+			return 0x70 | mem.map[address];
+		case 0XFF27:
+		case 0XFF28:
+		case 0XFF29:
+		case 0XFF2A:
+		case 0XFF2B:
+		case 0XFF2C:
+		case 0XFF2D:
+		case 0XFF2E:
+		case 0XFF2F:
+			return 0xFF | mem.map[address];
+		case WPRAM_BASE + 0x0:
+		case WPRAM_BASE + 0x1:
+		case WPRAM_BASE + 0x2:
+		case WPRAM_BASE + 0x3:
+		case WPRAM_BASE + 0x4:
+		case WPRAM_BASE + 0x5:
+		case WPRAM_BASE + 0x6:
+		case WPRAM_BASE + 0x7:
+		case WPRAM_BASE + 0x8:
+		case WPRAM_BASE + 0x9:
+		case WPRAM_BASE + 0xA:
+		case WPRAM_BASE + 0xB:
+		case WPRAM_BASE + 0xC:
+		case WPRAM_BASE + 0xD:
+		case WPRAM_BASE + 0xE:
+		case WPRAM_BASE + 0xF:
+			return 0x00 | mem.map[address];
+		default:
+			return mem.map[address];
 		}
 	}
 
