@@ -181,7 +181,7 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				if (CHK_BIT(data, 7)) {
 					mem.map[address] |= 0xF0;
 				} else {
-					mem.map[address] = 0;
+					memset(&mem.map[NR10_ADDR], 0x00, WPRAM_BASE - NR10_ADDR);
 				}
 				return;
 			case NR14_ADDR:
