@@ -175,37 +175,53 @@ void gb_memory_write(uint16_t address, uint8_t data)
 			}
 		}
 
-		else if (address == NR52_ADDR) {
-			if (CHK_BIT(data, 7)) {
-				mem.map[address] |= 0xF0;
-			} else {
-				mem.map[address] &= ~(0xF0);
+		else if (address >= NR10_ADDR && address < WPRAM_BASE) {
+			switch (address) {
+			case NR52_ADDR:
+				if (CHK_BIT(data, 7)) {
+					mem.map[address] |= 0xF0;
+				} else {
+					mem.map[address] = 0;
+				}
+				return;
+			case NR14_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					if (CHK_BIT(data, 7)) {
+						gb_apu_trigger_ch1();
+					}
+				}
+				return;
+			case NR24_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					if (CHK_BIT(data, 7)) {
+						gb_apu_trigger_ch2();
+					}
+				}
+				return;
+			case NR34_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					if (CHK_BIT(data, 7)) {
+						gb_apu_trigger_ch3();
+					}
+				}
+				return;
+			case NR44_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					if (CHK_BIT(data, 7)) {
+						gb_apu_trigger_ch4();
+					}
+				}
+				return;
+			default:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+				}
+				return;
 			}
-			return;
-		}
-
-		else if (address == NR14_ADDR && CHK_BIT(data, 7)) {
-			mem.map[address] = data;
-			gb_apu_trigger_ch1();
-			return;
-		}
-
-		else if (address == NR24_ADDR && CHK_BIT(data, 7)) {
-			mem.map[address] = data;
-			gb_apu_trigger_ch2();
-			return;
-		}
-
-		else if (address == NR34_ADDR && CHK_BIT(data, 7)) {
-			mem.map[address] = data;
-			gb_apu_trigger_ch3();
-			return;
-		}
-
-		else if (address == NR44_ADDR && CHK_BIT(data, 7)) {
-			mem.map[address] = data;
-			gb_apu_trigger_ch4();
-			return;
 		}
 	}
 
