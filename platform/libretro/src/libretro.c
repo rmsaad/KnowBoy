@@ -9,13 +9,14 @@
 #include <windows.h>
 #endif
 
+#include "gb_apu.h"
 #include "gb_cpu.h"
 #include "gb_mbc.h"
 #include "gb_memory.h"
-#include "gb_papu.h"
 #include "gb_ppu.h"
 #include "libretro.h"
 #include "logging.h"
+
 
 #define AUDIO_BUF_SIZE	   32768
 #define VIDEO_WIDTH	   GAMEBOY_SCREEN_WIDTH
@@ -206,7 +207,7 @@ void retro_run(void)
 	for (int Tstates = 0; Tstates < 70224; Tstates += 4) {
 		gb_cpu_step();
 		gb_ppu_step();
-		gb_papu_step();
+		gb_apu_step();
 	}
 
 	video_cb(framebuffer, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH * sizeof(uint32_t));
@@ -306,7 +307,7 @@ bool retro_load_game(const struct retro_game_info *info)
 	memcpy(rom_data, info->data, info->size);
 	gb_cpu_init();
 	gb_ppu_init();
-	gb_papu_init(audio_buf, &audio_buf_pos, AUDIO_BUF_SIZE);
+	gb_apu_init(audio_buf, &audio_buf_pos, AUDIO_BUF_SIZE);
 	gb_memory_init(boot_rom_data, rom_data, false);
 	gb_memory_set_control_function(prvControlsJoypad);
 	gb_ppu_set_display_frame_buffer(prvDisplayLineBuffer);

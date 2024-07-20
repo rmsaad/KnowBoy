@@ -8,10 +8,10 @@
  * @date 2021-03-28
  */
 
+#include "gb_apu.h"
 #include "gb_common.h"
 #include "gb_mbc.h"
 #include "gb_memory.h"
-#include "gb_papu.h"
 #include "logging.h"
 
 #include <stdint.h>
@@ -186,25 +186,25 @@ void gb_memory_write(uint16_t address, uint8_t data)
 
 		else if (address == NR14_ADDR && CHK_BIT(data, 7)) {
 			mem.map[address] = data;
-			gb_papu_trigger_ch1();
+			gb_apu_trigger_ch1();
 			return;
 		}
 
 		else if (address == NR24_ADDR && CHK_BIT(data, 7)) {
 			mem.map[address] = data;
-			gb_papu_trigger_ch2();
+			gb_apu_trigger_ch2();
 			return;
 		}
 
 		else if (address == NR34_ADDR && CHK_BIT(data, 7)) {
 			mem.map[address] = data;
-			gb_papu_trigger_ch3();
+			gb_apu_trigger_ch3();
 			return;
 		}
 
 		else if (address == NR44_ADDR && CHK_BIT(data, 7)) {
 			mem.map[address] = data;
-			gb_papu_trigger_ch4();
+			gb_apu_trigger_ch4();
 			return;
 		}
 	}

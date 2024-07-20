@@ -1,5 +1,5 @@
 /**
- * @file gb_papu.c
+ * @file gb_apu.c
  * @brief Gameboy Audio Functionality.
  *
  * This file emulates all functionality of the gameboy audio.
@@ -8,15 +8,15 @@
  * @date 2021-07-11
  */
 
+#include "gb_apu.h"
 #include "gb_memory.h"
-#include "gb_papu.h"
 #include "logging.h"
 
 #include <string.h>
 
 // Audio buffers
-static uint16_t *gb_papu_buf = NULL;
-static uint16_t *gb_papu_buf_pos = NULL;
+static uint16_t *gb_apu_buf = NULL;
+static uint16_t *gb_apu_buf_pos = NULL;
 
 static const uint8_t duties[4][8] = {
 	{0, 0, 0, 0, 0, 0, 0, 1}, // 00
@@ -81,7 +81,7 @@ static uint16_t ch4_lfsr = 0;
 
 extern memory_t mem;
 
-static void gb_papu_step_ch1(void)
+static void gb_apu_step_ch1(void)
 {
 
 	// length
@@ -161,7 +161,7 @@ static void gb_papu_step_ch1(void)
 	}
 }
 
-static void gb_papu_step_ch2(void)
+static void gb_apu_step_ch2(void)
 {
 	// length
 	if (frame_sequence_step % 2 == 0 && (mem.map[NR24_ADDR] & CH2_LEN_EN) &&
@@ -193,7 +193,7 @@ static void gb_papu_step_ch2(void)
 	}
 }
 
-static void gb_papu_step_ch3(void)
+static void gb_apu_step_ch3(void)
 {
 
 	//  handle length
@@ -206,7 +206,7 @@ static void gb_papu_step_ch3(void)
 	}
 }
 
-static void gb_papu_step_ch4(void)
+static void gb_apu_step_ch4(void)
 {
 
 	//  handle length
@@ -237,14 +237,14 @@ static void gb_papu_step_ch4(void)
 	}
 }
 
-void gb_papu_init(uint16_t *buf, uint16_t *buf_pos, uint16_t buf_size)
+void gb_apu_init(uint16_t *buf, uint16_t *buf_pos, uint16_t buf_size)
 {
-	gb_papu_buf = buf;
-	gb_papu_buf_pos = buf_pos;
-	memset(gb_papu_buf, 0x00, buf_size);
+	gb_apu_buf = buf;
+	gb_apu_buf_pos = buf_pos;
+	memset(gb_apu_buf, 0x00, buf_size);
 }
 
-void gb_papu_step(void)
+void gb_apu_step(void)
 {
 	uint8_t current_cylces = 4;
 
@@ -298,18 +298,18 @@ void gb_papu_step(void)
 			frame_sequence_step++;
 			frame_sequence_step %= 8;
 
-			gb_papu_step_ch1();
-			gb_papu_step_ch2();
-			gb_papu_step_ch3();
-			gb_papu_step_ch4();
+			gb_apu_step_ch1();
+			gb_apu_step_ch2();
+			gb_apu_step_ch3();
+			gb_apu_step_ch4();
 		}
 
 		// 95
 		if (!--audio_freq_convert_factor) {
 			audio_freq_convert_factor = 95;
 
-			gb_papu_buf[*gb_papu_buf_pos] = 0;
-			gb_papu_buf[*gb_papu_buf_pos + 1] = 0;
+			gb_apu_buf[*gb_apu_buf_pos] = 0;
+			gb_apu_buf[*gb_apu_buf_pos + 1] = 0;
 
 			if (mem.map[NR52_ADDR] & AUDIO_ON) {
 
@@ -320,14 +320,14 @@ void gb_papu_step(void)
 						   CH1_WAVE_DUTY_OFFSET;
 
 					if (mem.map[NR51_ADDR] & CH1_LEFT) {
-						gb_papu_buf[*gb_papu_buf_pos] =
+						gb_apu_buf[*gb_apu_buf_pos] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
 								 : 0);
 					}
 
 					if ((mem.map[NR51_ADDR] & CH1_RIGHT)) {
-						gb_papu_buf[*gb_papu_buf_pos + 1] =
+						gb_apu_buf[*gb_apu_buf_pos + 1] =
 							((duties[duty][ch1_duty_pos] == 1)
 								 ? ch1_volume
 								 : 0);
@@ -341,13 +341,13 @@ void gb_papu_step(void)
 						   CH2_WAVE_DUTY_OFFSET;
 
 					if (mem.map[NR51_ADDR] & CH2_LEFT) {
-						gb_papu_buf[*gb_papu_buf_pos] +=
+						gb_apu_buf[*gb_apu_buf_pos] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
 								 : 0);
 					}
 					if (mem.map[NR51_ADDR] & CH2_RIGHT) {
-						gb_papu_buf[*gb_papu_buf_pos + 1] +=
+						gb_apu_buf[*gb_apu_buf_pos + 1] +=
 							((duties[duty][ch2_duty_pos] == 1)
 								 ? ch2_volume
 								 : 0);
@@ -374,11 +374,11 @@ void gb_papu_step(void)
 						wave = wave >> 4;
 
 					if (mem.map[NR51_ADDR] & CH3_LEFT) {
-						gb_papu_buf[*gb_papu_buf_pos] += wave;
+						gb_apu_buf[*gb_apu_buf_pos] += wave;
 					}
 
 					if (mem.map[NR51_ADDR] & CH3_RIGHT) {
-						gb_papu_buf[*gb_papu_buf_pos + 1] += wave;
+						gb_apu_buf[*gb_apu_buf_pos + 1] += wave;
 					}
 				}
 
@@ -387,28 +387,28 @@ void gb_papu_step(void)
 				    (mem.map[NR42_ADDR] & (CH4_INITIAL_VOL + CH4_ENVELOPE_DIR))) {
 
 					if (mem.map[NR51_ADDR] & CH4_LEFT) {
-						gb_papu_buf[*gb_papu_buf_pos] +=
+						gb_apu_buf[*gb_apu_buf_pos] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
 					if (mem.map[NR51_ADDR] & CH4_RIGHT) {
-						gb_papu_buf[*gb_papu_buf_pos + 1] +=
+						gb_apu_buf[*gb_apu_buf_pos + 1] +=
 							((ch4_lfsr & 0x1) ? ch4_volume : 0);
 					}
 				}
 
-				gb_papu_buf[*gb_papu_buf_pos] <<=
+				gb_apu_buf[*gb_apu_buf_pos] <<=
 					((mem.map[NR50_ADDR] & VOL_LEFT) >> VOL_LEFT_OFFSET);
 
-				gb_papu_buf[*gb_papu_buf_pos + 1] <<=
+				gb_apu_buf[*gb_apu_buf_pos + 1] <<=
 					((mem.map[NR50_ADDR] & VOL_RIGHT) >> VOL_RIGHT_OFFSET);
 			}
-			*gb_papu_buf_pos += 2;
+			*gb_apu_buf_pos += 2;
 		}
 	}
 }
 
 // TRIGGER EVENTS
-void gb_papu_trigger_ch1(void)
+void gb_apu_trigger_ch1(void)
 {
 	// Enable Channel
 	mem.map[NR52_ADDR] |= CH1_ON;
@@ -459,7 +459,7 @@ void gb_papu_trigger_ch1(void)
 	}
 }
 
-void gb_papu_trigger_ch2(void)
+void gb_apu_trigger_ch2(void)
 {
 	mem.map[NR52_ADDR] |= CH2_ON;
 
@@ -480,7 +480,7 @@ void gb_papu_trigger_ch2(void)
 	}
 }
 
-void gb_papu_trigger_ch3(void)
+void gb_apu_trigger_ch3(void)
 {
 	mem.map[NR52_ADDR] |= CH3_ON;
 
@@ -498,7 +498,7 @@ void gb_papu_trigger_ch3(void)
 	}
 }
 
-void gb_papu_trigger_ch4(void)
+void gb_apu_trigger_ch4(void)
 {
 	mem.map[NR52_ADDR] |= CH4_ON;
 

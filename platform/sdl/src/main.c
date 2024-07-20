@@ -12,12 +12,13 @@
 #include <nfd.h>
 
 // gameboyLib
+#include "gb_apu.h"
 #include "gb_cpu.h"
 #include "gb_debug.h"
 #include "gb_mbc.h"
 #include "gb_memory.h"
-#include "gb_papu.h"
 #include "gb_ppu.h"
+
 
 #define MAX_LINE_LENGTH 1024
 
@@ -625,7 +626,7 @@ int load_rom(gb_config_t *gb_config)
 	}
 	gb_cpu_init();
 	gb_ppu_init();
-	gb_papu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
+	gb_apu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
 	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
 	gb_memory_set_control_function(controls_joypad);
 	gb_ppu_set_display_frame_buffer(copy_frame_buffer);
@@ -645,7 +646,7 @@ int run_rom(gb_config_t *gb_config)
 		}
 		gb_cpu_step();
 		gb_ppu_step();
-		gb_papu_step();
+		gb_apu_step();
 	}
 
 	if (gb_config->av.enable) {
