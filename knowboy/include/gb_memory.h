@@ -42,6 +42,7 @@
 #define NR12_ADDR  0xFF12
 #define NR13_ADDR  0xFF13
 #define NR14_ADDR  0xFF14
+#define NR20_ADDR  0xFF15
 #define NR21_ADDR  0xFF16
 #define NR22_ADDR  0xFF17
 #define NR23_ADDR  0xFF18
@@ -51,6 +52,7 @@
 #define NR32_ADDR  0xFF1C
 #define NR33_ADDR  0xFF1D
 #define NR34_ADDR  0xFF1E
+#define NR40_ADDR  0xFF1F
 #define NR41_ADDR  0xFF20
 #define NR42_ADDR  0xFF21
 #define NR43_ADDR  0xFF22
