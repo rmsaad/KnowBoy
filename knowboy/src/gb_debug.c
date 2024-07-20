@@ -158,6 +158,14 @@ void gb_debug_check_msg_queue(void)
 			if (valid && gb_debug_is_breakpoint_activated(&breakpoints, address)) {
 				gb_debug_deactivate_breakpoint(&breakpoints, address);
 			}
+		} else if (strncmp(message, "print", sizeof("print") - 1) == 0) {
+			uint16_t address;
+			bool valid =
+				gb_debug_parse_address(&message[sizeof("print")],
+						       QUEUE_MSG_LEN - (sizeof("print")), &address);
+			if (valid) {
+				LOG_DBG("address %x: %x", address, mem.map[address]);
+			}
 		}
 		gb_debug_flush();
 	}
