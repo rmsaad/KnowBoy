@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define QUEUE_MSG_LEN 50
+#define QUEUE_MSG_LEN 50ul
 
 typedef bool (*gb_debug_check_msg_queue_t)(void *, char *);
 typedef void (*gb_debug_flush_t)(void);

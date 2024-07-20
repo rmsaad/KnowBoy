@@ -12,7 +12,9 @@
 #include "gb_memory.h"
 #include "logging.h"
 
+#include <ctype.h>
 #include <stdint.h>
+#include <string.h>
 
 #define MAX_BREAKPOINTS 5
 
@@ -112,6 +114,7 @@ void gb_debug_init(gb_debug_check_msg_queue_t check_msg_queue, gb_debug_flush_t 
 {
 	debugger_stopped = false;
 	proceed = false;
+	prev_PC = 0xFFFF;
 	gb_debug_check_queue = check_msg_queue;
 	gb_debug_queue_ctx = queue_ctx;
 	gb_debug_flush = flush;
