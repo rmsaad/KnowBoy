@@ -171,8 +171,6 @@ void gb_memory_write(uint16_t address, uint8_t data)
 
 		else if (address == BOOT_EN_ADDR) {
 			if (data == 1) {
-				LOG_INF("BOOT ROM SWITCH !!!!!!!!!!!!!!!!");
-				LOG_HEXDUMP_INF(gb_memory_get_rom_pointer(), 256);
 				gb_memory_load(gb_memory_get_rom_pointer(), 256);
 			}
 		}
