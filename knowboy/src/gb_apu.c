@@ -407,21 +407,34 @@ void gb_apu_step(void)
 	}
 }
 
-// TRIGGER EVENTS
+void gb_apu_set_length_ch1(void)
+{
+	ch1_length_counter = 64 - (mem.map[NR11_ADDR] & CH1_INITIAL_LEN_TIMER);
+}
+
+void gb_apu_set_length_ch2(void)
+{
+	ch2_length_counter = 64 - (mem.map[NR21_ADDR] & CH2_INITIAL_LEN_TIMER);
+}
+
+void gb_apu_set_length_ch3(void)
+{
+	ch3_length_counter = 256 - (mem.map[NR31_ADDR] & CH3_INITIAL_LEN_TIMER);
+}
+
+void gb_apu_set_length_ch4(void)
+{
+	ch4_length_counter = 64 - (mem.map[NR41_ADDR] & CH4_INITIAL_LEN_TIMER);
+}
+
 void gb_apu_trigger_ch1(void)
 {
-	// Enable Channel
 	mem.map[NR52_ADDR] |= CH1_ON;
-
-	// Set Length Channel to 64 - t1
-	if (ch1_length_counter == 0)
-		ch1_length_counter = 64 - (mem.map[NR11_ADDR] & CH1_INITIAL_LEN_TIMER);
 
 	uint16_t freq_x =
 		((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 	ch1_timer = (2048 - freq_x) * 4;
 
-	// reload volume envelope
 	ch1_envelope = mem.map[NR12_ADDR] & CH1_SWEEP_PACE >> CH1_SWEEP_PACE_OFFSET;
 	ch1_daq_on = 1;
 
@@ -463,9 +476,6 @@ void gb_apu_trigger_ch2(void)
 {
 	mem.map[NR52_ADDR] |= CH2_ON;
 
-	if (ch2_length_counter == 0)
-		ch2_length_counter = 64 - (mem.map[NR21_ADDR] & CH2_INITIAL_LEN_TIMER);
-
 	uint16_t freq_x =
 		((mem.map[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 | mem.map[NR23_ADDR] & CH2_PERIOD_LOW);
 	ch2_timer = (2048 - freq_x) * 4;
@@ -484,9 +494,6 @@ void gb_apu_trigger_ch3(void)
 {
 	mem.map[NR52_ADDR] |= CH3_ON;
 
-	if (ch3_length_counter == 0)
-		ch3_length_counter = 256 - (mem.map[NR31_ADDR] & CH3_INITIAL_LEN_TIMER);
-
 	uint16_t freq_x =
 		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
@@ -501,9 +508,6 @@ void gb_apu_trigger_ch3(void)
 void gb_apu_trigger_ch4(void)
 {
 	mem.map[NR52_ADDR] |= CH4_ON;
-
-	if (ch4_length_counter == 0)
-		ch4_length_counter = 64 - (mem.map[NR41_ADDR] & CH4_INITIAL_LEN_TIMER);
 
 	ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
 		    << ((mem.map[NR43_ADDR] & CH4_CLOCK_SHIFT) >> CH4_CLOCK_SHIFT_OFFSET);
