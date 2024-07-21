@@ -188,8 +188,8 @@
 #define CH2_TRIGGER	       BIT_POS_7
 
 /* NR30 */
-#define CH3_DAQ_ON_OFFSET 7
-#define CH3_DAQ_ON	  BIT_POS_7
+#define CH3_DAC_ON_OFFSET 7
+#define CH3_DAC_ON	  BIT_POS_7
 
 /* NR31 */
 #define CH3_INITIAL_LEN_TIMER_OFFSET 0

@@ -190,6 +190,13 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					gb_apu_set_length_ch1();
 				}
 				return;
+			case NR12_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_dac_ch1(data &
+							   (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL));
+				}
+				return;
 			case NR14_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;
@@ -204,12 +211,25 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					gb_apu_set_length_ch2();
 				}
 				return;
+			case NR22_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_dac_ch2(data &
+							   (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL));
+				}
+				return;
 			case NR24_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;
 					if (CHK_BIT(data, 7)) {
 						gb_apu_trigger_ch2();
 					}
+				}
+				return;
+			case NR30_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_dac_ch3(data & CH3_DAC_ON);
 				}
 				return;
 			case NR31_ADDR:
@@ -230,6 +250,13 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;
 					gb_apu_set_length_ch4();
+				}
+				return;
+			case NR42_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_dac_ch4(data &
+							   (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL));
 				}
 				return;
 			case NR44_ADDR:
