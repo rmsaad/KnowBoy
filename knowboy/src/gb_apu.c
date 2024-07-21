@@ -25,15 +25,16 @@ static const uint8_t duties[4][8] = {
 	{0, 1, 1, 1, 1, 1, 1, 0}  // 11
 };
 
-// DAQ Status
-static uint8_t ch1_daq_on = 0;
-static uint8_t ch2_daq_on = 0;
-static uint8_t ch4_daq_on = 0;
+// Dac Status
+static bool ch1_dac_on = false;
+static bool ch2_dac_on = false;
+static bool ch3_dac_on = false;
+static bool ch4_dac_on = false;
 
 // Length Counters
 static uint8_t ch1_length_counter = 0;
 static uint8_t ch2_length_counter = 0;
-static uint8_t ch3_length_counter = 0;
+static uint16_t ch3_length_counter = 0;
 static uint8_t ch4_length_counter = 0;
 
 // frequency timers
@@ -143,7 +144,7 @@ static void gb_apu_step_ch1(void)
 	}
 
 	//  handle envelope (volume envelope)
-	if (frame_sequence_step == 7 && ch1_daq_on &&
+	if (frame_sequence_step == 7 && ch1_dac_on &&
 	    ((mem.map[NR12_ADDR] & CH1_SWEEP_PACE) >> CH1_SWEEP_PACE_OFFSET)) {
 		--ch1_envelope;
 
@@ -173,7 +174,7 @@ static void gb_apu_step_ch2(void)
 	}
 
 	// envelope
-	if (frame_sequence_step == 7 && ch2_daq_on &&
+	if (frame_sequence_step == 7 && ch2_dac_on &&
 	    ((mem.map[NR22_ADDR] & CH2_SWEEP_PACE) >> CH2_SWEEP_PACE_OFFSET)) {
 		ch2_envelope--;
 
@@ -355,8 +356,7 @@ void gb_apu_step(void)
 				}
 
 				// ch3
-				if ((mem.map[NR52_ADDR] & CH3_ON) &&
-				    (mem.map[NR30_ADDR] & CH3_DAQ_ON)) {
+				if ((mem.map[NR52_ADDR] & CH3_ON)) {
 
 					uint8_t wave = mem.map[WPRAM_BASE + (ch3_wave_pos / 2)];
 
@@ -383,8 +383,7 @@ void gb_apu_step(void)
 				}
 
 				// ch4
-				if (((mem.map[NR52_ADDR] & CH4_ON)) &&
-				    (mem.map[NR42_ADDR] & (CH4_INITIAL_VOL + CH4_ENVELOPE_DIR))) {
+				if ((mem.map[NR52_ADDR] & CH4_ON)) {
 
 					if (mem.map[NR51_ADDR] & CH4_LEFT) {
 						gb_apu_buf[*gb_apu_buf_pos] +=
@@ -404,6 +403,38 @@ void gb_apu_step(void)
 			}
 			*gb_apu_buf_pos += 2;
 		}
+	}
+}
+
+void gb_apu_set_dac_ch1(uint8_t dac_mask)
+{
+	ch1_dac_on = (dac_mask != 0) ? true : false;
+	if (!ch1_dac_on) {
+		mem.map[NR52_ADDR] &= ~CH1_ON;
+	}
+}
+
+void gb_apu_set_dac_ch2(uint8_t dac_mask)
+{
+	ch2_dac_on = (dac_mask != 0) ? true : false;
+	if (!ch2_dac_on) {
+		mem.map[NR52_ADDR] &= ~CH2_ON;
+	}
+}
+
+void gb_apu_set_dac_ch3(uint8_t dac_mask)
+{
+	ch3_dac_on = (dac_mask != 0) ? true : false;
+	if (!ch3_dac_on) {
+		mem.map[NR52_ADDR] &= ~CH3_ON;
+	}
+}
+
+void gb_apu_set_dac_ch4(uint8_t dac_mask)
+{
+	ch4_dac_on = (dac_mask != 0) ? true : false;
+	if (!ch4_dac_on) {
+		mem.map[NR52_ADDR] &= ~CH4_ON;
 	}
 }
 
@@ -429,7 +460,9 @@ void gb_apu_set_length_ch4(void)
 
 void gb_apu_trigger_ch1(void)
 {
-	mem.map[NR52_ADDR] |= CH1_ON;
+	if (ch1_dac_on) {
+		mem.map[NR52_ADDR] |= CH1_ON;
+	}
 
 	if (ch1_length_counter == 0) {
 		ch1_length_counter = 64;
@@ -440,7 +473,6 @@ void gb_apu_trigger_ch1(void)
 	ch1_timer = (2048 - freq_x) * 4;
 
 	ch1_envelope = mem.map[NR12_ADDR] & CH1_SWEEP_PACE >> CH1_SWEEP_PACE_OFFSET;
-	ch1_daq_on = 1;
 
 	ch1_volume = (mem.map[NR12_ADDR] & CH1_INITIAL_VOL) >> CH1_INITIAL_VOL_OFFSET;
 
@@ -470,15 +502,13 @@ void gb_apu_trigger_ch1(void)
 			ch1_sweep_enable = 0;
 		}
 	}
-
-	if (mem.map[NR12_ADDR] & (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL) == 0x00) {
-		mem.map[NR52_ADDR] &= ~CH1_ON;
-	}
 }
 
 void gb_apu_trigger_ch2(void)
 {
-	mem.map[NR52_ADDR] |= CH2_ON;
+	if (ch2_dac_on) {
+		mem.map[NR52_ADDR] |= CH2_ON;
+	}
 
 	if (ch2_length_counter == 0) {
 		ch2_length_counter = 64;
@@ -489,18 +519,15 @@ void gb_apu_trigger_ch2(void)
 	ch2_timer = (2048 - freq_x) * 4;
 
 	ch2_envelope = mem.map[NR22_ADDR] & CH2_SWEEP_PACE >> CH2_SWEEP_PACE_OFFSET;
-	ch2_daq_on = 1;
 
 	ch2_volume = (mem.map[NR22_ADDR] & CH2_INITIAL_VOL) >> CH2_INITIAL_VOL_OFFSET;
-
-	if (mem.map[NR22_ADDR] & (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL) == 0x00) {
-		mem.map[NR52_ADDR] &= ~CH2_ON;
-	}
 }
 
 void gb_apu_trigger_ch3(void)
 {
-	mem.map[NR52_ADDR] |= CH3_ON;
+	if (ch3_dac_on) {
+		mem.map[NR52_ADDR] |= CH3_ON;
+	}
 
 	if (ch3_length_counter == 0) {
 		ch3_length_counter = 256;
@@ -511,15 +538,13 @@ void gb_apu_trigger_ch3(void)
 	ch3_timer = (2048 - freq_x) * 2;
 
 	ch3_wave_pos = 0;
-
-	if ((mem.map[NR30_ADDR] & CH3_DAQ_ON) == 0x00) {
-		mem.map[NR52_ADDR] &= ~CH3_ON;
-	}
 }
 
 void gb_apu_trigger_ch4(void)
 {
-	mem.map[NR52_ADDR] |= CH4_ON;
+	if (ch4_dac_on) {
+		mem.map[NR52_ADDR] |= CH4_ON;
+	}
 
 	if (ch4_length_counter == 0) {
 		ch4_length_counter = 64;
@@ -530,8 +555,4 @@ void gb_apu_trigger_ch4(void)
 	ch4_lfsr = 0x7fff;
 	ch4_volume = (mem.map[NR42_ADDR] & CH4_INITIAL_VOL) >> CH4_INITIAL_VOL_OFFSET;
 	ch4_envelope = (mem.map[NR42_ADDR] & CH4_SWEEP_PACE) >> CH4_SWEEP_PACE_OFFSET;
-
-	if (mem.map[NR42_ADDR] & (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL) == 0x00) {
-		mem.map[NR52_ADDR] &= ~CH4_ON;
-	}
 }

@@ -13,6 +13,10 @@
 
 void gb_apu_init(uint16_t *buf, uint16_t *buf_pos, uint16_t buf_size);
 void gb_apu_step(void);
+void gb_apu_set_dac_ch1(uint8_t dac_mask);
+void gb_apu_set_dac_ch2(uint8_t dac_mask);
+void gb_apu_set_dac_ch3(uint8_t dac_mask);
+void gb_apu_set_dac_ch4(uint8_t dac_mask);
 void gb_apu_set_length_ch1(void);
 void gb_apu_set_length_ch2(void);
 void gb_apu_set_length_ch3(void);
