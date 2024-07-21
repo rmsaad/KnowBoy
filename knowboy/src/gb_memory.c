@@ -184,12 +184,24 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					memset(&mem.map[NR10_ADDR], 0x00, WPRAM_BASE - NR10_ADDR);
 				}
 				return;
+			case NR11_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_length_ch1();
+				}
+				return;
 			case NR14_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;
 					if (CHK_BIT(data, 7)) {
 						gb_apu_trigger_ch1();
 					}
+				}
+				return;
+			case NR21_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_length_ch2();
 				}
 				return;
 			case NR24_ADDR:
@@ -200,12 +212,24 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					}
 				}
 				return;
+			case NR31_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_length_ch3();
+				}
+				return;
 			case NR34_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;
 					if (CHK_BIT(data, 7)) {
 						gb_apu_trigger_ch3();
 					}
+				}
+				return;
+			case NR41_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_set_length_ch4();
 				}
 				return;
 			case NR44_ADDR:
