@@ -431,6 +431,10 @@ void gb_apu_trigger_ch1(void)
 {
 	mem.map[NR52_ADDR] |= CH1_ON;
 
+	if (ch1_length_counter == 0) {
+		ch1_length_counter = 64;
+	}
+
 	uint16_t freq_x =
 		((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 	ch1_timer = (2048 - freq_x) * 4;
@@ -476,6 +480,10 @@ void gb_apu_trigger_ch2(void)
 {
 	mem.map[NR52_ADDR] |= CH2_ON;
 
+	if (ch2_length_counter == 0) {
+		ch2_length_counter = 64;
+	}
+
 	uint16_t freq_x =
 		((mem.map[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 | mem.map[NR23_ADDR] & CH2_PERIOD_LOW);
 	ch2_timer = (2048 - freq_x) * 4;
@@ -494,6 +502,10 @@ void gb_apu_trigger_ch3(void)
 {
 	mem.map[NR52_ADDR] |= CH3_ON;
 
+	if (ch3_length_counter == 0) {
+		ch3_length_counter = 256;
+	}
+
 	uint16_t freq_x =
 		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
@@ -508,6 +520,10 @@ void gb_apu_trigger_ch3(void)
 void gb_apu_trigger_ch4(void)
 {
 	mem.map[NR52_ADDR] |= CH4_ON;
+
+	if (ch4_length_counter == 0) {
+		ch4_length_counter = 64;
+	}
 
 	ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
 		    << ((mem.map[NR43_ADDR] & CH4_CLOCK_SHIFT) >> CH4_CLOCK_SHIFT_OFFSET);
