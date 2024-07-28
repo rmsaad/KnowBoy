@@ -458,6 +458,34 @@ void gb_apu_set_length_ch4(void)
 	ch4_length_counter = 64 - (mem.map[NR41_ADDR] & CH4_INITIAL_LEN_TIMER);
 }
 
+void gb_apu_update_ch1_counter(void)
+{
+	if (ch1_length_counter != 0 && frame_sequence_step % 2 == 0) {
+		ch1_length_counter--;
+	}
+}
+
+void gb_apu_update_ch2_counter(void)
+{
+	if (ch2_length_counter != 0 && frame_sequence_step % 2 == 0) {
+		ch2_length_counter--;
+	}
+}
+
+void gb_apu_update_ch3_counter(void)
+{
+	if (ch3_length_counter != 0 && frame_sequence_step % 2 == 0) {
+		ch3_length_counter--;
+	}
+}
+
+void gb_apu_update_ch4_counter(void)
+{
+	if (ch4_length_counter != 0 && frame_sequence_step % 2 == 0) {
+		ch4_length_counter--;
+	}
+}
+
 void gb_apu_trigger_ch1(void)
 {
 	if (ch1_dac_on) {
