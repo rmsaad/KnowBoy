@@ -518,6 +518,9 @@ void gb_apu_trigger_ch1(void)
 
 	if (ch1_length_counter == 0) {
 		ch1_length_counter = 64;
+		if (mem.map[NR14_ADDR] & CH1_LEN_EN && frame_sequence_step % 2 == 0) {
+			ch1_length_counter--;
+		}
 	}
 
 	uint16_t freq_x =
@@ -564,6 +567,9 @@ void gb_apu_trigger_ch2(void)
 
 	if (ch2_length_counter == 0) {
 		ch2_length_counter = 64;
+		if (mem.map[NR24_ADDR] & CH2_LEN_EN && frame_sequence_step % 2 == 0) {
+			ch2_length_counter--;
+		}
 	}
 
 	uint16_t freq_x =
@@ -583,6 +589,9 @@ void gb_apu_trigger_ch3(void)
 
 	if (ch3_length_counter == 0) {
 		ch3_length_counter = 256;
+		if (mem.map[NR34_ADDR] & CH3_LEN_EN && frame_sequence_step % 2 == 0) {
+			ch3_length_counter--;
+		}
 	}
 
 	uint16_t freq_x =
@@ -600,6 +609,9 @@ void gb_apu_trigger_ch4(void)
 
 	if (ch4_length_counter == 0) {
 		ch4_length_counter = 64;
+		if (mem.map[NR44_ADDR] & CH4_LEN_EN && frame_sequence_step % 2 == 0) {
+			ch4_length_counter--;
+		}
 	}
 
 	ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
