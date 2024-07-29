@@ -460,12 +460,10 @@ void gb_apu_set_length_ch4(void)
 
 void gb_apu_update_ch1_counter(void)
 {
-	// commit 1
 	if (ch1_length_counter != 0 && frame_sequence_step % 2 == 0) {
 		ch1_length_counter--;
 	}
 
-	// commit 2
 	if (ch1_length_counter == 0) {
 		mem.map[NR52_ADDR] &= ~CH1_ON;
 	}
@@ -473,12 +471,10 @@ void gb_apu_update_ch1_counter(void)
 
 void gb_apu_update_ch2_counter(void)
 {
-	// commit 1
 	if (ch2_length_counter != 0 && frame_sequence_step % 2 == 0) {
 		ch2_length_counter--;
 	}
 
-	// commit 2
 	if (ch2_length_counter == 0) {
 		mem.map[NR52_ADDR] &= ~CH2_ON;
 	}
@@ -486,12 +482,10 @@ void gb_apu_update_ch2_counter(void)
 
 void gb_apu_update_ch3_counter(void)
 {
-	// commit 1
 	if (ch3_length_counter != 0 && frame_sequence_step % 2 == 0) {
 		ch3_length_counter--;
 	}
 
-	// commit 2
 	if (ch3_length_counter == 0) {
 		mem.map[NR52_ADDR] &= ~CH3_ON;
 	}
@@ -499,12 +493,10 @@ void gb_apu_update_ch3_counter(void)
 
 void gb_apu_update_ch4_counter(void)
 {
-	// commit 1
 	if (ch4_length_counter != 0 && frame_sequence_step % 2 == 0) {
 		ch4_length_counter--;
 	}
 
-	// commit 2
 	if (ch4_length_counter == 0) {
 		mem.map[NR52_ADDR] &= ~CH4_ON;
 	}
