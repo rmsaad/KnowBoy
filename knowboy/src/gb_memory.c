@@ -125,7 +125,6 @@ static uint8_t gb_memory_joypad(void)
 	return gb_memory_controls(&joypad_sel_dir, &joypad_sel_but);
 }
 
-bool turned_on = false;
 /**
  * @brief Write data to location in memory map specified by address variable
  * @param address memory map address
@@ -200,8 +199,8 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				return;
 			case NR14_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-					turned_on = ~(mem.map[NR14_ADDR] & CH1_LEN_EN) &
-						    (data & CH1_LEN_EN);
+					bool turned_on = ~(mem.map[NR14_ADDR] & CH1_LEN_EN) &
+							 (data & CH1_LEN_EN);
 					mem.map[address] = data;
 					if (turned_on) {
 						gb_apu_update_ch1_counter();
@@ -209,7 +208,6 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					if (CHK_BIT(data, 7)) {
 						gb_apu_trigger_ch1();
 					}
-					turned_on = false;
 				}
 				return;
 			case NR21_ADDR:
@@ -227,8 +225,8 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				return;
 			case NR24_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-					turned_on = ~(mem.map[NR24_ADDR] & CH2_LEN_EN) &
-						    (data & CH2_LEN_EN);
+					bool turned_on = ~(mem.map[NR24_ADDR] & CH2_LEN_EN) &
+							 (data & CH2_LEN_EN);
 					mem.map[address] = data;
 					if (turned_on) {
 						gb_apu_update_ch2_counter();
@@ -252,8 +250,8 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				return;
 			case NR34_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-					turned_on = ~(mem.map[NR34_ADDR] & CH3_LEN_EN) &
-						    (data & CH3_LEN_EN);
+					bool turned_on = ~(mem.map[NR34_ADDR] & CH3_LEN_EN) &
+							 (data & CH3_LEN_EN);
 					mem.map[address] = data;
 					if (turned_on) {
 						gb_apu_update_ch3_counter();
@@ -278,8 +276,8 @@ void gb_memory_write(uint16_t address, uint8_t data)
 				return;
 			case NR44_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-					turned_on = ~(mem.map[NR44_ADDR] & CH4_LEN_EN) &
-						    (data & CH4_LEN_EN);
+					bool turned_on = ~(mem.map[NR44_ADDR] & CH4_LEN_EN) &
+							 (data & CH4_LEN_EN);
 					mem.map[address] = data;
 					if (turned_on) {
 						gb_apu_update_ch4_counter();
