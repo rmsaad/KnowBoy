@@ -559,8 +559,6 @@ void gb_apu_trigger_ch1(void)
 		if (newfreq > 2047) {
 			mem.map[NR52_ADDR] &= ~CH1_ON;
 			ch1_sweep_enable = 0;
-		} else {
-			ch1_sweep_shadow = newfreq;
 		}
 	}
 }
