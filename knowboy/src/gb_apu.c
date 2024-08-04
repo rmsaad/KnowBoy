@@ -72,6 +72,7 @@ static uint8_t ch3_wave_pos = 0;
 // CH1 Sweep Period, Negate, Shift
 static uint8_t ch1_sweep_enable = 0;
 static uint8_t ch1_sweep_pace = 0;
+static uint8_t ch1_sweep_timer = 0;
 static uint8_t ch1_sweep_dir = 0;
 static uint32_t ch1_sweep_shadow = 0;
 static int16_t ch1_sweep_step = 0;
@@ -95,24 +96,26 @@ static void gb_apu_step_ch1(void)
 	}
 
 	//  handle sweep (frequency sweep)
-	ch1_sweep_step =
-		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
-	ch1_sweep_pace =
-		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
-	ch1_sweep_dir = (mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET;
+	if (frame_sequence_step == 2 || frame_sequence_step == 6) {
 
-	if ((frame_sequence_step == 2 || frame_sequence_step == 6) && ch1_sweep_pace &&
-	    ch1_sweep_step) {
+		if (ch1_sweep_timer > 0)
+			--ch1_sweep_timer;
 
-		//  tick sweep down
-		--ch1_sweep_pace;
-		if (ch1_sweep_pace <= 0) {
+		if (ch1_sweep_timer == 0) {
 
-			//  reload sweep
+			ch1_sweep_pace = (mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >>
+					 CH1_PERIOD_SWEEP_PACE_OFFSET;
+			ch1_sweep_timer = ch1_sweep_pace;
+
 			if (ch1_sweep_pace == 0)
-				ch1_sweep_pace = 8;
+				ch1_sweep_timer = 8;
 
-			if (ch1_sweep_enable) {
+			if (ch1_sweep_enable && ch1_sweep_pace) {
+				ch1_sweep_step = (mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >>
+						 CH1_PERIOD_SWEEP_STEP_OFFSET;
+				ch1_sweep_dir = (mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >>
+						CH1_PERIOD_SWEEP_DIR_OFFSET;
+
 				ch1_sweep_negate = ch1_sweep_dir ? -1 : 1;
 
 				uint32_t newfreq =
@@ -525,16 +528,17 @@ void gb_apu_trigger_ch1(void)
 
 	ch1_sweep_pace =
 		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_PACE) >> CH1_PERIOD_SWEEP_PACE_OFFSET;
+	ch1_sweep_timer = ch1_sweep_pace;
+
+	if (ch1_sweep_pace == 0)
+		ch1_sweep_timer = 8;
 
 	ch1_sweep_step =
 		(mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_STEP) >> CH1_PERIOD_SWEEP_STEP_OFFSET;
 
-	ch1_sweep_negate =
-		((mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET) ? -1
-											     : 1;
+	ch1_sweep_negate = 1;
 
-	//  this was an OR before. Change if needed
-	if (ch1_sweep_pace && ch1_sweep_step)
+	if (ch1_sweep_pace || ch1_sweep_step)
 		ch1_sweep_enable = 1;
 	else
 		ch1_sweep_enable = 0;
@@ -543,10 +547,20 @@ void gb_apu_trigger_ch1(void)
 		((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 | mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 
 	if (ch1_sweep_step) {
-		if ((ch1_sweep_shadow + ((ch1_sweep_shadow >> ch1_sweep_step) * ch1_sweep_negate)) >
-		    2047) {
+
+		ch1_sweep_negate =
+			((mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET)
+				? -1
+				: 1;
+
+		uint32_t newfreq = ch1_sweep_shadow +
+				   ((ch1_sweep_shadow >> ch1_sweep_step) * ch1_sweep_negate);
+
+		if (newfreq > 2047) {
 			mem.map[NR52_ADDR] &= ~CH1_ON;
 			ch1_sweep_enable = 0;
+		} else {
+			ch1_sweep_shadow = newfreq;
 		}
 	}
 }
