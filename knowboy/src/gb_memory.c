@@ -184,6 +184,12 @@ void gb_memory_write(uint16_t address, uint8_t data)
 					memset(&mem.map[NR10_ADDR], 0x00, WPRAM_BASE - NR10_ADDR);
 				}
 				return;
+			case NR10_ADDR:
+				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+					mem.map[address] = data;
+					gb_apu_check_negate_ch1();
+				}
+				return;
 			case NR11_ADDR:
 				if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 					mem.map[address] = data;

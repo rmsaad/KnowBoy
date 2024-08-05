@@ -126,7 +126,8 @@ static void gb_apu_step_ch1(void)
 					ch1_sweep_shadow = newfreq;
 
 					mem.map[NR13_ADDR] = ch1_sweep_shadow & 0xff;
-					gb_memory_write(NR14_ADDR, (ch1_sweep_shadow >> 8) & 0x07);
+					mem.map[NR14_ADDR] = (mem.map[NR14_ADDR] & ~0x07) |
+							     ((ch1_sweep_shadow >> 8) & 0x07);
 
 					if ((ch1_sweep_shadow +
 					     ((ch1_sweep_shadow >> ch1_sweep_step) *
@@ -502,6 +503,14 @@ void gb_apu_update_ch4_counter(void)
 
 	if (ch4_length_counter == 0) {
 		mem.map[NR52_ADDR] &= ~CH4_ON;
+	}
+}
+
+void gb_apu_check_negate_ch1(void)
+{
+	if (ch1_sweep_negate == -1 &&
+	    !((mem.map[NR10_ADDR] & CH1_PERIOD_SWEEP_DIR) >> CH1_PERIOD_SWEEP_DIR_OFFSET)) {
+		mem.map[NR52_ADDR] &= ~CH1_ON;
 	}
 }
 
