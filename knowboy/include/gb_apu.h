@@ -29,5 +29,6 @@ void gb_apu_trigger_ch1(void);
 void gb_apu_trigger_ch2(void);
 void gb_apu_trigger_ch3(void);
 void gb_apu_trigger_ch4(void);
+void gb_apu_check_negate_ch1(void);
 
 #endif /* INCLUDE_GB_APU_H_ */
