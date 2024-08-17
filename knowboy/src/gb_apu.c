@@ -635,6 +635,37 @@ void gb_apu_trigger_ch4(void)
 	ch4_envelope = (mem.map[NR42_ADDR] & CH4_SWEEP_PACE) >> CH4_SWEEP_PACE_OFFSET;
 }
 
+void gb_apu_reset(void)
+{
+	ch1_dac_on = false;
+	ch2_dac_on = false;
+	ch3_dac_on = false;
+	ch4_dac_on = false;
+	ch1_timer = 0;
+	ch2_timer = 0;
+	ch3_timer = 0;
+	ch4_timer = 0;
+	ch1_envelope = 0;
+	ch2_envelope = 0;
+	ch3_envelope = 0;
+	ch4_envelope = 0;
+	ch1_volume = 0;
+	ch2_volume = 0;
+	ch3_volume = 0;
+	ch4_volume = 0;
+	ch1_duty_pos = 0;
+	ch2_duty_pos = 0;
+	ch3_wave_pos = 0;
+	ch1_sweep_enable = 0;
+	ch1_sweep_pace = 0;
+	ch1_sweep_timer = 0;
+	ch1_sweep_dir = 0;
+	ch1_sweep_shadow = 0;
+	ch1_sweep_step = 0;
+	ch1_sweep_negate = 0;
+	ch4_lfsr = 0;
+}
+
 uint8_t gb_apu_memory_read(uint16_t address)
 {
 	switch (address) {
@@ -720,10 +751,13 @@ void gb_apu_memory_write(uint16_t address, uint8_t data)
 {
 	switch (address) {
 	case NR52_ADDR:
-		if (CHK_BIT(data, 7)) {
+		if (CHK_BIT(data, 7) && !CHK_BIT(mem.map[address], 7)) {
+			frame_sequence_step = 7;
 			mem.map[address] |= 0xF0;
-		} else {
-			memset(&mem.map[NR10_ADDR], 0x00, WPRAM_BASE - NR10_ADDR);
+		} else if (!CHK_BIT(data, 7) && CHK_BIT(mem.map[address], 7)) {
+			mem.map[address] = 0;
+			memset(&mem.map[NR10_ADDR], 0x00, NR52_ADDR - NR10_ADDR);
+			gb_apu_reset();
 		}
 		return;
 	case NR10_ADDR:
