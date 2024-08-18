@@ -766,123 +766,142 @@ uint8_t gb_apu_memory_read(uint16_t address)
 
 void gb_apu_memory_write(uint16_t address, uint8_t data)
 {
-	switch (address) {
-	case NR52_ADDR:
-		if (CHK_BIT(data, 7) && !CHK_BIT(mem.map[address], 7)) {
-			frame_sequence_step = 7;
-			mem.map[address] |= 0xF0;
-		} else if (!CHK_BIT(data, 7) && CHK_BIT(mem.map[address], 7)) {
-			mem.map[address] = 0;
-			memset(&mem.map[NR10_ADDR], 0x00, NR52_ADDR - NR10_ADDR);
-			gb_apu_reset();
-		}
-		return;
-	case NR10_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+	if (address >= NR10_ADDR && address < WPRAM_BASE) {
+		switch (address) {
+		case NR52_ADDR:
+			if (CHK_BIT(data, 7) && !CHK_BIT(mem.map[address], 7)) {
+				frame_sequence_step = 7;
+				mem.map[address] |= 0xF0;
+			} else if (!CHK_BIT(data, 7) && CHK_BIT(mem.map[address], 7)) {
+				mem.map[address] = 0;
+				memset(&mem.map[NR10_ADDR], 0x00, NR52_ADDR - NR10_ADDR);
+				gb_apu_reset();
+			}
+			return;
+		case NR10_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+				gb_apu_check_negate_ch1();
+			}
+			return;
+		case NR11_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+			} else {
+				mem.map[address] = data & 0x3F;
+			}
+			gb_apu_set_length_ch1();
+			return;
+		case NR12_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+				gb_apu_set_dac_ch1(data & (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL));
+			}
+			return;
+		case NR14_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				bool turned_on =
+					~(mem.map[NR14_ADDR] & CH1_LEN_EN) & (data & CH1_LEN_EN);
+				mem.map[address] = data;
+				if (turned_on) {
+					gb_apu_update_ch1_counter();
+				}
+				if (CHK_BIT(data, 7)) {
+					gb_apu_trigger_ch1();
+				}
+			}
+			return;
+		case NR21_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+			} else {
+				mem.map[address] = data & 0x3F;
+			}
+			gb_apu_set_length_ch2();
+			return;
+		case NR22_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+				gb_apu_set_dac_ch2(data & (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL));
+			}
+			return;
+		case NR24_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				bool turned_on =
+					~(mem.map[NR24_ADDR] & CH2_LEN_EN) & (data & CH2_LEN_EN);
+				mem.map[address] = data;
+				if (turned_on) {
+					gb_apu_update_ch2_counter();
+				}
+				if (CHK_BIT(data, 7)) {
+					gb_apu_trigger_ch2();
+				}
+			}
+			return;
+		case NR30_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+				gb_apu_set_dac_ch3(data & CH3_DAC_ON);
+			}
+			return;
+		case NR31_ADDR:
 			mem.map[address] = data;
-			gb_apu_check_negate_ch1();
-		}
-		return;
-	case NR11_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+			gb_apu_set_length_ch3();
+			return;
+		case NR34_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				bool turned_on =
+					~(mem.map[NR34_ADDR] & CH3_LEN_EN) & (data & CH3_LEN_EN);
+				mem.map[address] = data;
+				if (turned_on) {
+					gb_apu_update_ch3_counter();
+				}
+				if (CHK_BIT(data, 7)) {
+					gb_apu_trigger_ch3();
+				}
+			}
+			return;
+		case NR41_ADDR:
 			mem.map[address] = data;
+			gb_apu_set_length_ch4();
+			return;
+		case NR42_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+				gb_apu_set_dac_ch4(data & (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL));
+			}
+			return;
+		case NR44_ADDR:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				bool turned_on =
+					~(mem.map[NR44_ADDR] & CH4_LEN_EN) & (data & CH4_LEN_EN);
+				mem.map[address] = data;
+				if (turned_on) {
+					gb_apu_update_ch4_counter();
+				}
+				if (CHK_BIT(data, 7)) {
+					gb_apu_trigger_ch4();
+				}
+			}
+			return;
+		default:
+			if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
+				mem.map[address] = data;
+			}
+			return;
+		}
+	} else if (address >= WPRAM_BASE && address < LCDC_ADDR) {
+		if ((mem.map[NR52_ADDR] & CH3_ON)) {
+			if (ch3_timer == 2 && ch3_wave_avail) {
+				mem.map[WPRAM_BASE + (ch3_wave_pos >> 1)] = data;
+				return;
+			} else {
+				return;
+			}
+
 		} else {
-			mem.map[address] = data & 0x3F;
-		}
-		gb_apu_set_length_ch1();
-		return;
-	case NR12_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
 			mem.map[address] = data;
-			gb_apu_set_dac_ch1(data & (CH1_ENVELOPE_DIR + CH1_INITIAL_VOL));
+			return;
 		}
-		return;
-	case NR14_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			bool turned_on = ~(mem.map[NR14_ADDR] & CH1_LEN_EN) & (data & CH1_LEN_EN);
-			mem.map[address] = data;
-			if (turned_on) {
-				gb_apu_update_ch1_counter();
-			}
-			if (CHK_BIT(data, 7)) {
-				gb_apu_trigger_ch1();
-			}
-		}
-		return;
-	case NR21_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			mem.map[address] = data;
-		} else {
-			mem.map[address] = data & 0x3F;
-		}
-		gb_apu_set_length_ch2();
-		return;
-	case NR22_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			mem.map[address] = data;
-			gb_apu_set_dac_ch2(data & (CH2_ENVELOPE_DIR + CH2_INITIAL_VOL));
-		}
-		return;
-	case NR24_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			bool turned_on = ~(mem.map[NR24_ADDR] & CH2_LEN_EN) & (data & CH2_LEN_EN);
-			mem.map[address] = data;
-			if (turned_on) {
-				gb_apu_update_ch2_counter();
-			}
-			if (CHK_BIT(data, 7)) {
-				gb_apu_trigger_ch2();
-			}
-		}
-		return;
-	case NR30_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			mem.map[address] = data;
-			gb_apu_set_dac_ch3(data & CH3_DAC_ON);
-		}
-		return;
-	case NR31_ADDR:
-		mem.map[address] = data;
-		gb_apu_set_length_ch3();
-		return;
-	case NR34_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			bool turned_on = ~(mem.map[NR34_ADDR] & CH3_LEN_EN) & (data & CH3_LEN_EN);
-			mem.map[address] = data;
-			if (turned_on) {
-				gb_apu_update_ch3_counter();
-			}
-			if (CHK_BIT(data, 7)) {
-				gb_apu_trigger_ch3();
-			}
-		}
-		return;
-	case NR41_ADDR:
-		mem.map[address] = data;
-		gb_apu_set_length_ch4();
-		return;
-	case NR42_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			mem.map[address] = data;
-			gb_apu_set_dac_ch4(data & (CH4_ENVELOPE_DIR + CH4_INITIAL_VOL));
-		}
-		return;
-	case NR44_ADDR:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			bool turned_on = ~(mem.map[NR44_ADDR] & CH4_LEN_EN) & (data & CH4_LEN_EN);
-			mem.map[address] = data;
-			if (turned_on) {
-				gb_apu_update_ch4_counter();
-			}
-			if (CHK_BIT(data, 7)) {
-				gb_apu_trigger_ch4();
-			}
-		}
-		return;
-	default:
-		if (CHK_BIT(mem.map[NR52_ADDR], 7)) {
-			mem.map[address] = data;
-		}
-		return;
 	}
 }
