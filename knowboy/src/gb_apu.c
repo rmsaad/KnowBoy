@@ -615,6 +615,27 @@ void gb_apu_trigger_ch3(void)
 		}
 	}
 
+	if (ch3_timer == 4 && ch3_wave_avail) {
+		if ((ch3_wave_pos >> 1) <= 0x3) {
+			mem.map[WPRAM_BASE + 0x0] = mem.map[WPRAM_BASE + (ch3_wave_pos >> 1)];
+		} else if ((ch3_wave_pos >> 1) <= 0x7) {
+			mem.map[WPRAM_BASE + 0x0] = mem.map[WPRAM_BASE + 0x4];
+			mem.map[WPRAM_BASE + 0x1] = mem.map[WPRAM_BASE + 0x5];
+			mem.map[WPRAM_BASE + 0x2] = mem.map[WPRAM_BASE + 0x6];
+			mem.map[WPRAM_BASE + 0x3] = mem.map[WPRAM_BASE + 0x7];
+		} else if ((ch3_wave_pos >> 1) <= 0xB) {
+			mem.map[WPRAM_BASE + 0x0] = mem.map[WPRAM_BASE + 0x8];
+			mem.map[WPRAM_BASE + 0x1] = mem.map[WPRAM_BASE + 0x9];
+			mem.map[WPRAM_BASE + 0x2] = mem.map[WPRAM_BASE + 0xA];
+			mem.map[WPRAM_BASE + 0x3] = mem.map[WPRAM_BASE + 0xB];
+		} else if ((ch3_wave_pos >> 1) <= 0xF) {
+			mem.map[WPRAM_BASE + 0x0] = mem.map[WPRAM_BASE + 0xC];
+			mem.map[WPRAM_BASE + 0x1] = mem.map[WPRAM_BASE + 0xD];
+			mem.map[WPRAM_BASE + 0x2] = mem.map[WPRAM_BASE + 0xE];
+			mem.map[WPRAM_BASE + 0x3] = mem.map[WPRAM_BASE + 0xF];
+		}
+	}
+
 	uint16_t freq_x =
 		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
@@ -672,6 +693,7 @@ void gb_apu_reset(void)
 	ch1_sweep_step = 0;
 	ch1_sweep_negate = 0;
 	ch4_lfsr = 0;
+	ch3_wave_avail = false;
 }
 
 uint8_t gb_apu_memory_read(uint16_t address)
