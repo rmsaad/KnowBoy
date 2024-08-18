@@ -256,8 +256,8 @@ void gb_apu_step(void)
 
 	while (current_cylces--) {
 
-		// check timer
-		if (ch1_timer-- <= 0x00) {
+		ch1_timer--;
+		if (ch1_timer <= 0x00) {
 			uint16_t freq_x = ((mem.map[NR14_ADDR] & CH1_PERIOD_HIGH) << 8 |
 					   mem.map[NR13_ADDR] & CH1_PERIOD_LOW);
 			ch1_timer = (2048 - freq_x) * 4;
@@ -265,7 +265,8 @@ void gb_apu_step(void)
 			ch1_duty_pos %= 8;
 		}
 
-		if (ch2_timer-- <= 0x00) {
+		ch2_timer--;
+		if (ch2_timer <= 0x00) {
 			uint16_t freq_x = ((mem.map[NR24_ADDR] & CH2_PERIOD_HIGH) << 8 |
 					   mem.map[NR23_ADDR] & CH2_PERIOD_LOW);
 			ch2_timer = (2048 - freq_x) * 4;
@@ -273,7 +274,8 @@ void gb_apu_step(void)
 			ch2_duty_pos %= 8;
 		}
 
-		if (ch3_timer-- <= 0x00) {
+		ch3_timer--;
+		if (ch3_timer <= 0x00) {
 			uint16_t freq_x = ((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 |
 					   mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 			ch3_timer = (2048 - freq_x) * 2;
@@ -281,7 +283,8 @@ void gb_apu_step(void)
 			ch3_wave_pos %= 32;
 		}
 
-		if (ch4_timer-- <= 0x00) {
+		ch4_timer--;
+		if (ch4_timer <= 0x00) {
 			ch4_timer = ch4_divisor[mem.map[NR43_ADDR] & CH4_CLOCK_DIV]
 				    << ((mem.map[NR43_ADDR] & CH4_CLOCK_SHIFT) >>
 					CH4_CLOCK_SHIFT_OFFSET);
