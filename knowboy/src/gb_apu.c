@@ -79,6 +79,9 @@ static uint32_t ch1_sweep_shadow = 0;
 static int16_t ch1_sweep_step = 0;
 static int16_t ch1_sweep_negate = 0;
 
+// CH3 wave ram availiable
+static bool ch3_wave_avail = false;
+
 static const uint8_t ch4_divisor[8] = {8, 16, 32, 48, 64, 80, 96, 112};
 static uint16_t ch4_lfsr = 0;
 
@@ -281,6 +284,7 @@ void gb_apu_step(void)
 			ch3_timer = (2048 - freq_x) * 2;
 			ch3_wave_pos++;
 			ch3_wave_pos %= 32;
+			ch3_wave_avail = true;
 		}
 
 		ch4_timer--;
@@ -614,8 +618,8 @@ void gb_apu_trigger_ch3(void)
 	uint16_t freq_x =
 		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
-
 	ch3_wave_pos = 0;
+	ch3_wave_avail = false;
 }
 
 void gb_apu_trigger_ch4(void)
@@ -744,7 +748,16 @@ uint8_t gb_apu_memory_read(uint16_t address)
 	case WPRAM_BASE + 0xD:
 	case WPRAM_BASE + 0xE:
 	case WPRAM_BASE + 0xF:
-		return 0x00 | mem.map[address];
+		if ((mem.map[NR52_ADDR] & CH3_ON)) {
+			if (ch3_timer == 2 && ch3_wave_avail) {
+				return mem.map[WPRAM_BASE + (ch3_wave_pos >> 1)];
+			} else {
+				return 0xFF;
+			}
+
+		} else {
+			return 0x00 | mem.map[address];
+		}
 	default:
 		return mem.map[address];
 	}
