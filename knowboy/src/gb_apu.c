@@ -618,6 +618,7 @@ void gb_apu_trigger_ch3(void)
 	uint16_t freq_x =
 		((mem.map[NR34_ADDR] & CH3_PERIOD_HIGH) << 8 | mem.map[NR33_ADDR] & CH3_PERIOD_LOW);
 	ch3_timer = (2048 - freq_x) * 2;
+	ch3_timer += 4;
 	ch3_wave_pos = 0;
 	ch3_wave_avail = false;
 }
