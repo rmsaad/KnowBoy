@@ -17,7 +17,8 @@
 
 #include <string.h>
 
-// Line buffer start address
+// Gameboy Memory struct
+extern memory_t mem;
 
 // PPU Registers
 static uint8_t ly_value = 0;
@@ -608,5 +609,20 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 
 	if (ly == 143) {
 		gb_ppu_display_frame_buffer(&ucGBLine[(0)]);
+	}
+}
+
+uint8_t gb_ppu_memory_read(uint16_t address)
+{
+	return mem.map[address];
+}
+
+void gb_ppu_memory_write(uint16_t address, uint8_t data)
+{
+	switch (address) {
+
+	default:
+		mem.map[address] = data;
+		return;
 	}
 }

@@ -169,15 +169,20 @@ void gb_memory_write(uint16_t address, uint8_t data)
 			return;
 		}
 
+		else if (address >= NR10_ADDR && address < LCDC_ADDR) {
+			gb_apu_memory_write(address, data);
+			return;
+		}
+
+		else if (address >= LCDC_ADDR && address < BOOT_EN_ADDR) {
+			gb_ppu_memory_write(address, data);
+			return;
+		}
+
 		else if (address == BOOT_EN_ADDR) {
 			if (data == 1) {
 				gb_memory_load(gb_memory_get_rom_pointer(), 256);
 			}
-		}
-
-		else if (address >= NR10_ADDR && address < LCDC_ADDR) {
-			gb_apu_memory_write(address, data);
-			return;
 		}
 
 		mem.map[address] = data;
@@ -267,6 +272,10 @@ uint8_t gb_memory_read(uint16_t address)
 
 		else if (address >= NR10_ADDR && address < LCDC_ADDR) {
 			return gb_apu_memory_read(address);
+		}
+
+		else if (address >= LCDC_ADDR && address < BOOT_EN_ADDR) {
+			return gb_ppu_memory_read(address);
 		}
 
 		else {
