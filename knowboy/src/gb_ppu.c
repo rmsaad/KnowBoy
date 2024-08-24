@@ -35,8 +35,6 @@ static uint32_t obp1_color_to_palette[4];
 static uint32_t ucGBLine[160 * 3 * 2000];
 static uint8_t ucBGWINline[160];
 static uint32_t current_line;
-static uint8_t ulScaleAmount = 1;
-static uint32_t ulLineAdd;
 
 // Function Pointer pointing to external function in display.c
 static gb_ppu_display_frame_buffer_t gb_ppu_display_frame_buffer;
@@ -78,7 +76,7 @@ void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame
  */
 void gb_ppu_init(void)
 {
-	memset(ucGBLine, 0, 160 * 144 * 4 * ulScaleAmount);
+	memset(ucGBLine, 0, 160 * 144 * 4);
 	ly_value = 0;
 	line_cycle_counter = 0;
 	stat_mode = 0;
@@ -371,12 +369,7 @@ static void gb_ppu_set_stat_mode(uint8_t mode)
  */
 static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
 {
-	pixel_pos *= ulScaleAmount;
-	for (int xStretch = 0; xStretch < ulScaleAmount; xStretch++) {
-		for (int yStretch = 0; yStretch < ulScaleAmount; yStretch++)
-			ucGBLine[pixel_pos + xStretch + (current_line) + (ulLineAdd * yStretch)] =
-				data;
-	}
+	ucGBLine[pixel_pos + current_line] = data;
 }
 
 /**
@@ -590,8 +583,7 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 	gb_ppu_check_obp1();
 
 	uint16_t tile_data_addr = gb_ppu_get_background_window_tile_data_select();
-	current_line = ly * ulScaleAmount * ulScaleAmount * 160;
-	ulLineAdd = ulScaleAmount * 160;
+	current_line = ly * 160;
 
 	if (gb_memory_read(LCDC_ADDR) & 0x01) {
 		gb_ppu_draw_line_background(ly, scx, scy, tile_data_addr,
