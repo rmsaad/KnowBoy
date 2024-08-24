@@ -32,8 +32,8 @@ static uint32_t obp0_color_to_palette[4];
 static uint32_t obp1_color_to_palette[4];
 
 // Frame Buffer variables
-static uint32_t ucGBLine[160 * 3 * 2000];
-static uint8_t ucBGWINline[160];
+static uint32_t ucGBLine[GAMEBOY_SCREEN_WIDTH * 3 * 2000];
+static uint8_t ucBGWINline[GAMEBOY_SCREEN_WIDTH];
 static uint32_t current_line;
 
 // Function Pointer pointing to external function in display.c
@@ -76,7 +76,7 @@ void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame
  */
 void gb_ppu_init(void)
 {
-	memset(ucGBLine, 0, 160 * 144 * 4);
+	memset(ucGBLine, 0, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4);
 	ly_value = 0;
 	line_cycle_counter = 0;
 	stat_mode = 0;
@@ -396,7 +396,7 @@ static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
 		gb_ppu_get_tile_line_data(tile_offset, line_offset, tile_data_addr,
 					  display_addr); // tile data holds tile line information
 
-	for (int j = 0; j < 160; j++) {
+	for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
 
 		uint32_t pixel_data = 0;
 
@@ -463,7 +463,7 @@ static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t
 		gb_ppu_get_tile_line_data(tile_offset, line_offset, tile_data_addr,
 					  display_addr); // tile data holds tile line information
 
-	for (int j = (wx - 7); j < 160; j++) {
+	for (int j = (wx - 7); j < GAMEBOY_SCREEN_WIDTH; j++) {
 		uint32_t pixel_data = 0;
 
 		switch (((tile_data << pixl_offset) & 0x8080)) {
@@ -552,7 +552,7 @@ static void gb_ppu_draw_line_objects(uint8_t ly)
 				}
 
 				if (pixel_data != 0 && x_coordinate + pixel_num >= 0 &&
-				    (x_coordinate + pixel_num) < 160) {
+				    (x_coordinate + pixel_num) < GAMEBOY_SCREEN_WIDTH) {
 					if ((obj_prio) && ucBGWINline[x_coordinate + pixel_num]) {
 						// do nothing this circumstance
 					} else {
@@ -583,7 +583,7 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 	gb_ppu_check_obp1();
 
 	uint16_t tile_data_addr = gb_ppu_get_background_window_tile_data_select();
-	current_line = ly * 160;
+	current_line = ly * GAMEBOY_SCREEN_WIDTH;
 
 	if (gb_memory_read(LCDC_ADDR) & 0x01) {
 		gb_ppu_draw_line_background(ly, scx, scy, tile_data_addr,
@@ -594,7 +594,7 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 						gb_ppu_get_window_tile_display_select());
 		}
 	} else {
-		for (int j = 0; j < 160; j++) {
+		for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
 			gb_ppu_update_frame_buffer(1, j);
 		}
 	}
