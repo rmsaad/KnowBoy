@@ -102,7 +102,7 @@ void gb_ppu_step(void)
 {
 	static uint8_t fps_limiter = 0;
 
-	if (gb_memory_read(LCDC_ADDR) & 0x80) { // check MSB of LCDC for screen en
+	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 7)) { // check MSB of LCDC for screen en
 		line_cycle_counter += 4;
 
 		if (line_cycle_counter > 456) { // end of hblank or vblank
@@ -257,7 +257,8 @@ static void gb_ppu_check_obp1()
  */
 static uint16_t gb_ppu_get_background_window_tile_data_select()
 {
-	return (gb_memory_read(LCDC_ADDR) & 0x10) ? TILE_DATA_UNSIGNED_ADDR : TILE_DATA_SIGNED_ADDR;
+	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 4)) ? TILE_DATA_UNSIGNED_ADDR
+						       : TILE_DATA_SIGNED_ADDR;
 }
 
 /**
@@ -270,7 +271,8 @@ static uint16_t gb_ppu_get_background_window_tile_data_select()
  */
 static uint16_t gb_ppu_get_background_tile_display_select()
 {
-	return (gb_memory_read(LCDC_ADDR) & 0x08) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
+	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 3)) ? TILE_MAP_LOCATION_HIGH
+						       : TILE_MAP_LOCATION_LOW;
 }
 
 /**
@@ -283,7 +285,8 @@ static uint16_t gb_ppu_get_background_tile_display_select()
  */
 static uint16_t gb_ppu_get_window_tile_display_select()
 {
-	return (gb_memory_read(LCDC_ADDR) & 0x40) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
+	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 6)) ? TILE_MAP_LOCATION_HIGH
+						       : TILE_MAP_LOCATION_LOW;
 }
 
 /**
@@ -585,10 +588,10 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 	uint16_t tile_data_addr = gb_ppu_get_background_window_tile_data_select();
 	current_line = ly * GAMEBOY_SCREEN_WIDTH;
 
-	if (gb_memory_read(LCDC_ADDR) & 0x01) {
+	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 0)) {
 		gb_ppu_draw_line_background(ly, scx, scy, tile_data_addr,
 					    gb_ppu_get_background_tile_display_select());
-		if (gb_memory_read(LCDC_ADDR) & 0x20) {
+		if (CHK_BIT(gb_memory_read(LCDC_ADDR), 5)) {
 			gb_ppu_draw_line_window(ly, gb_memory_read(WX_ADDR),
 						gb_memory_read(WY_ADDR), tile_data_addr,
 						gb_ppu_get_window_tile_display_select());
@@ -599,7 +602,7 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 		}
 	}
 
-	if (gb_memory_read(LCDC_ADDR) & 0x02) {
+	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 1)) {
 		gb_ppu_draw_line_objects(ly);
 	}
 
