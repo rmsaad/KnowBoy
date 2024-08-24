@@ -101,7 +101,6 @@ void gb_ppu_init(void)
  */
 void gb_ppu_step(void)
 {
-	static uint8_t fps_limiter = 0;
 
 	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 7)) { // check MSB of LCDC for screen en
 		line_cycle_counter += 4;
@@ -110,7 +109,6 @@ void gb_ppu_step(void)
 			ly_value++;
 			gb_ppu_check_lyc(ly_value);
 			if (ly_value > 153) { // end of vblank
-				fps_limiter++;
 				gb_ppu_set_stat_mode(STAT_MODE_2);
 				ly_value = 0;
 
@@ -137,10 +135,8 @@ void gb_ppu_step(void)
 			else if (line_cycle_counter > 80 && line_cycle_counter <= 252 &&
 				 stat_mode != STAT_MODE_3) { // vram region
 
-				if (fps_limiter % 1 == 0) {
-					gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
-							 gb_memory_read(SCY_ADDR));
-				}
+				gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
+						 gb_memory_read(SCY_ADDR));
 
 				gb_ppu_set_stat_mode(STAT_MODE_3);
 			} else if (line_cycle_counter > 252 && line_cycle_counter <= 456 &&
