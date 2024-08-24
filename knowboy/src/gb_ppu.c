@@ -25,7 +25,7 @@ static uint8_t ly_value = 0;
 static uint8_t stat_mode;
 
 // State Ticks
-static uint32_t line_cycle_counter;
+static uint32_t ppu_dot_counter;
 
 // Palettes
 static uint32_t bgp_color_to_palette[4];
@@ -79,7 +79,7 @@ void gb_ppu_init(void)
 {
 	memset(ucGBLine, 0, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4);
 	ly_value = 0;
-	line_cycle_counter = 0;
+	ppu_dot_counter = 0;
 	stat_mode = 0;
 }
 
@@ -108,9 +108,9 @@ void gb_ppu_step(void)
 		return;
 	}
 
-	line_cycle_counter += 4;
+	ppu_dot_counter += 4;
 
-	if (line_cycle_counter > 456) { // end of hblank or vblank
+	if (ppu_dot_counter > 456) { // end of hblank or vblank
 		ly_value++;
 		gb_ppu_check_lyc(ly_value);
 		if (ly_value > 153) { // end of vblank
@@ -122,7 +122,7 @@ void gb_ppu_step(void)
 		}
 
 		gb_memory_write(LY_ADDR, ly_value); // update LY register
-		line_cycle_counter -= 456;
+		ppu_dot_counter -= 456;
 	}
 
 	if (ly_value > 143) { // vblank region
@@ -135,16 +135,16 @@ void gb_ppu_step(void)
 			}
 		}
 	} else {
-		if (line_cycle_counter <= 80 && stat_mode != STAT_MODE_2) // oam region
+		if (ppu_dot_counter <= 80 && stat_mode != STAT_MODE_2) // oam region
 			gb_ppu_set_stat_mode(STAT_MODE_2);
-		else if (line_cycle_counter > 80 && line_cycle_counter <= 252 &&
+		else if (ppu_dot_counter > 80 && ppu_dot_counter <= 252 &&
 			 stat_mode != STAT_MODE_3) { // vram region
 
 			gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
 					 gb_memory_read(SCY_ADDR));
 
 			gb_ppu_set_stat_mode(STAT_MODE_3);
-		} else if (line_cycle_counter > 252 && line_cycle_counter <= 456 &&
+		} else if (ppu_dot_counter > 252 && ppu_dot_counter <= 456 &&
 			   stat_mode != STAT_MODE_0) { // hblank region
 			gb_ppu_set_stat_mode(STAT_MODE_0);
 			if (CHK_BIT(gb_memory_read(STAT_ADDR), 3))
