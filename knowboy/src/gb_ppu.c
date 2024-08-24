@@ -102,53 +102,54 @@ void gb_ppu_init(void)
 void gb_ppu_step(void)
 {
 
-	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 7)) { // check MSB of LCDC for screen en
-		line_cycle_counter += 4;
-
-		if (line_cycle_counter > 456) { // end of hblank or vblank
-			ly_value++;
-			gb_ppu_check_lyc(ly_value);
-			if (ly_value > 153) { // end of vblank
-				gb_ppu_set_stat_mode(STAT_MODE_2);
-				ly_value = 0;
-
-				if (CHK_BIT(gb_memory_read(STAT_ADDR), 5))
-					gb_memory_set_bit(IF_ADDR, 1);
-			}
-
-			gb_memory_write(LY_ADDR, ly_value); // update LY register
-			line_cycle_counter -= 456;
-		}
-
-		if (ly_value > 143) { // vblank region
-			if (stat_mode != STAT_MODE_1) {
-				gb_ppu_set_stat_mode(STAT_MODE_1);
-				if (CHK_BIT(gb_memory_read(STAT_ADDR), 4))
-					gb_memory_set_bit(IF_ADDR, 1);
-				if (ly_value == 0x90) {
-					gb_memory_set_bit(IF_ADDR, 0);
-				}
-			}
-		} else {
-			if (line_cycle_counter <= 80 && stat_mode != STAT_MODE_2) // oam region
-				gb_ppu_set_stat_mode(STAT_MODE_2);
-			else if (line_cycle_counter > 80 && line_cycle_counter <= 252 &&
-				 stat_mode != STAT_MODE_3) { // vram region
-
-				gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
-						 gb_memory_read(SCY_ADDR));
-
-				gb_ppu_set_stat_mode(STAT_MODE_3);
-			} else if (line_cycle_counter > 252 && line_cycle_counter <= 456 &&
-				   stat_mode != STAT_MODE_0) { // hblank region
-				gb_ppu_set_stat_mode(STAT_MODE_0);
-				if (CHK_BIT(gb_memory_read(STAT_ADDR), 3))
-					gb_memory_set_bit(IF_ADDR, 1);
-			}
-		}
-	} else { // screen is not enabled
+	if (!CHK_BIT(gb_memory_read(LCDC_ADDR), 7)) {
 		ly_value = 0;
 		gb_memory_write(LY_ADDR, ly_value);
+		return;
+	}
+
+	line_cycle_counter += 4;
+
+	if (line_cycle_counter > 456) { // end of hblank or vblank
+		ly_value++;
+		gb_ppu_check_lyc(ly_value);
+		if (ly_value > 153) { // end of vblank
+			gb_ppu_set_stat_mode(STAT_MODE_2);
+			ly_value = 0;
+
+			if (CHK_BIT(gb_memory_read(STAT_ADDR), 5))
+				gb_memory_set_bit(IF_ADDR, 1);
+		}
+
+		gb_memory_write(LY_ADDR, ly_value); // update LY register
+		line_cycle_counter -= 456;
+	}
+
+	if (ly_value > 143) { // vblank region
+		if (stat_mode != STAT_MODE_1) {
+			gb_ppu_set_stat_mode(STAT_MODE_1);
+			if (CHK_BIT(gb_memory_read(STAT_ADDR), 4))
+				gb_memory_set_bit(IF_ADDR, 1);
+			if (ly_value == 0x90) {
+				gb_memory_set_bit(IF_ADDR, 0);
+			}
+		}
+	} else {
+		if (line_cycle_counter <= 80 && stat_mode != STAT_MODE_2) // oam region
+			gb_ppu_set_stat_mode(STAT_MODE_2);
+		else if (line_cycle_counter > 80 && line_cycle_counter <= 252 &&
+			 stat_mode != STAT_MODE_3) { // vram region
+
+			gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
+					 gb_memory_read(SCY_ADDR));
+
+			gb_ppu_set_stat_mode(STAT_MODE_3);
+		} else if (line_cycle_counter > 252 && line_cycle_counter <= 456 &&
+			   stat_mode != STAT_MODE_0) { // hblank region
+			gb_ppu_set_stat_mode(STAT_MODE_0);
+			if (CHK_BIT(gb_memory_read(STAT_ADDR), 3))
+				gb_memory_set_bit(IF_ADDR, 1);
+		}
 	}
 }
 
