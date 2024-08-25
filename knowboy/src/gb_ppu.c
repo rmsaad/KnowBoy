@@ -202,15 +202,15 @@ void gb_ppu_step(void)
 static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
 					  uint16_t display_addr)
 {
-	if (tile_data_addr == 0x8000) {
-		return gb_memory_read_short(tile_data_addr +
-					    (gb_memory_read(display_addr + tile_offset) * 0x10) +
-					    line_offset);
+	uint16_t address = tile_data_addr;
+	if (tile_data_addr == TILE_DATA_UNSIGNED_ADDR) {
+		address += (mem.map[display_addr + tile_offset] * 0x10);
 	} else {
-		int8_t temp = (int8_t)(gb_memory_read(display_addr + tile_offset));
-		uint16_t temp2 = (temp + 128) * 0x10;
-		return gb_memory_read_short(tile_data_addr + temp2 + line_offset);
+		int8_t signed_conv = (int8_t)(mem.map[display_addr + tile_offset]);
+		address += (signed_conv + 128) * 0x10;
 	}
+	address += line_offset;
+	return CAT_BYTES(mem.map[address], mem.map[address + 1]);
 }
 
 /**
@@ -395,14 +395,14 @@ static void gb_ppu_draw_line_objects(void)
 {
 	for (int obj = 0; obj < 40; obj++) {
 		// must be signed for logic to work
-		int16_t y_coordinate = gb_memory_read(OAM_BASE + (obj * 4)) - 16;
+		int16_t y_coordinate = mem.map[OAM_BASE + (obj * 4)] - 16;
 		// "" "" "" same here
-		int16_t x_coordinate = gb_memory_read(OAM_BASE + (obj * 4) + 1) - 8;
-		uint8_t data_tile = gb_memory_read(OAM_BASE + (obj * 4) + 2);
-		uint8_t obj_prio = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 7);
-		uint8_t obj_y_flip = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 6);
-		uint8_t obj_x_flip = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 5);
-		uint8_t obj_palette = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 4);
+		int16_t x_coordinate = mem.map[OAM_BASE + (obj * 4) + 1] - 8;
+		uint8_t data_tile = mem.map[OAM_BASE + (obj * 4) + 2];
+		uint8_t obj_prio = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 7);
+		uint8_t obj_y_flip = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 6);
+		uint8_t obj_x_flip = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 5);
+		uint8_t obj_palette = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 4);
 		uint8_t obj_height = (obj_size == 0) ? 8 : 16;
 
 		if (y_coordinate <= ly && (y_coordinate + obj_height) > ly) {
@@ -410,8 +410,9 @@ static void gb_ppu_draw_line_objects(void)
 			uint8_t line_offset = obj_y_flip
 						      ? ((obj_height - 1) - (ly - y_coordinate)) * 2
 						      : (ly - y_coordinate) * 2;
-			uint16_t tile_data = gb_memory_read_short(TILE_DATA_UNSIGNED_ADDR +
-								  (data_tile * 0x10) + line_offset);
+			uint16_t address =
+				TILE_DATA_UNSIGNED_ADDR + (data_tile * 0x10) + line_offset;
+			uint16_t tile_data = CAT_BYTES(mem.map[address], mem.map[address + 1]);
 			uint32_t *palette = (obj_palette) ? &obp1_color_to_palette[0]
 							  : &obp0_color_to_palette[0];
 
@@ -529,7 +530,7 @@ void gb_ppu_memory_write(uint16_t address, uint8_t data)
 
 	case DMA_ADDR:
 		for (uint16_t i = 0; i < 40 * 4; i++)
-			gb_memory_write(OAM_BASE + i, gb_memory_read((data << 8) + i));
+			mem.map[OAM_BASE + i] = gb_memory_read((data << 8) + i);
 		return;
 
 	case BGP_ADDR:
