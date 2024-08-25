@@ -20,11 +20,7 @@
 // Gameboy Memory struct
 extern memory_t mem;
 
-// PPU Registers
-static uint8_t ly_value = 0;
-static uint8_t stat_mode;
-
-// State Ticks
+// dot counter
 static uint32_t ppu_dot_counter;
 
 // Palettes
@@ -35,29 +31,52 @@ static uint32_t obp1_color_to_palette[4];
 // Frame Buffer variables
 static uint32_t ucGBLine[GAMEBOY_SCREEN_WIDTH * 3 * 2000];
 static uint8_t ucBGWINline[GAMEBOY_SCREEN_WIDTH];
-static uint32_t current_line;
 
 // Function Pointer pointing to external function in display.c
 static gb_ppu_display_frame_buffer_t gb_ppu_display_frame_buffer;
 
+// LCDC register
+static bool ppu_enable = false;
+static uint16_t wn_display_addr = TILE_MAP_LOCATION_LOW;
+static bool wn_enable = false;
+static uint16_t tile_data_addr = TILE_DATA_SIGNED_ADDR;
+static uint16_t bg_display_addr = TILE_MAP_LOCATION_LOW;
+static bool obj_size = false;
+static bool obj_enable = false;
+static bool bg_wn_enable = false;
+
+// stat register
+static uint8_t stat_mode;
+static bool lyc_int_sel = false;
+static bool mode_2_sel = false;
+static bool mode_1_sel = false;
+static bool mode_0_sel = false;
+
+// scy register
+static uint8_t scy = 0;
+
+// scx register
+static uint8_t scx = 0;
+
+// ly register
+static uint8_t ly = 0;
+
+// wy register
+static uint8_t wy = 0;
+
+// wx register
+static uint8_t wx = 0;
+
 /*Function Prototypes*/
-static void gb_ppu_check_bgp();
-static void gb_ppu_check_obp0();
-static void gb_ppu_check_obp1();
-static void gb_ppu_check_lyc(uint8_t ly);
+static void inline gb_ppu_check_lyc(void);
 static void gb_ppu_set_stat_mode(uint8_t mode);
 static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos);
-static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
-					uint16_t tile_data_addr, uint16_t display_addr);
-static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
-				    uint16_t display_addr);
-static void gb_ppu_draw_line_objects(uint8_t ly);
-static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy);
+static void gb_ppu_draw_line_background(void);
+static void gb_ppu_draw_line_window(void);
+static void gb_ppu_draw_line_objects(void);
+static void gb_ppu_draw_line(void);
 static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
-					  uint16_t tile_data_addr, uint16_t display_addr);
-static uint16_t gb_ppu_get_background_window_tile_data_select();
-static uint16_t gb_ppu_get_background_tile_display_select();
-static uint16_t gb_ppu_get_window_tile_display_select();
+					  uint16_t display_addr);
 
 /**
  * @brief Sets function used in gb_ppu_draw_line() without needing to include
@@ -78,9 +97,28 @@ void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame
 void gb_ppu_init(void)
 {
 	memset(ucGBLine, 0, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4);
-	ly_value = 0;
 	ppu_dot_counter = 0;
 	stat_mode = 0;
+
+	ppu_enable = false;
+	wn_display_addr = TILE_MAP_LOCATION_LOW;
+	wn_enable = false;
+	tile_data_addr = TILE_DATA_SIGNED_ADDR;
+	bg_display_addr = TILE_MAP_LOCATION_LOW;
+	obj_size = false;
+	obj_enable = false;
+	bg_wn_enable = false;
+
+	lyc_int_sel = false;
+	mode_2_sel = false;
+	mode_1_sel = false;
+	mode_0_sel = false;
+
+	scy = 0;
+	scx = 0;
+	ly = 0;
+	wy = 0;
+	wx = 0;
 }
 
 /**
@@ -101,37 +139,36 @@ void gb_ppu_init(void)
  */
 void gb_ppu_step(void)
 {
-
-	if (!CHK_BIT(gb_memory_read(LCDC_ADDR), 7)) {
-		ly_value = 0;
-		gb_memory_write(LY_ADDR, ly_value);
+	if (!ppu_enable) {
+		ly = 0;
+		mem.map[LY_ADDR] = ly;
 		return;
 	}
 
 	ppu_dot_counter += 4;
 
 	if (ppu_dot_counter > 456) { // end of hblank or vblank
-		ly_value++;
-		gb_ppu_check_lyc(ly_value);
-		if (ly_value > 153) { // end of vblank
+		ly++;
+		gb_ppu_check_lyc();
+		if (ly > 153) { // end of vblank
 			gb_ppu_set_stat_mode(STAT_MODE_2);
-			ly_value = 0;
+			ly = 0;
 
-			if (CHK_BIT(gb_memory_read(STAT_ADDR), 5))
-				gb_memory_set_bit(IF_ADDR, 1);
+			if (mode_2_sel)
+				SET_BIT(mem.map[IF_ADDR], 1);
 		}
 
-		gb_memory_write(LY_ADDR, ly_value); // update LY register
+		mem.map[LY_ADDR] = ly;
 		ppu_dot_counter -= 456;
 	}
 
-	if (ly_value > 143) { // vblank region
+	if (ly > 143) { // vblank region
 		if (stat_mode != STAT_MODE_1) {
 			gb_ppu_set_stat_mode(STAT_MODE_1);
-			if (CHK_BIT(gb_memory_read(STAT_ADDR), 4))
-				gb_memory_set_bit(IF_ADDR, 1);
-			if (ly_value == 0x90) {
-				gb_memory_set_bit(IF_ADDR, 0);
+			if (mode_1_sel)
+				SET_BIT(mem.map[IF_ADDR], 1);
+			if (ly == 0x90) {
+				SET_BIT(mem.map[IF_ADDR], 0);
 			}
 		}
 	} else {
@@ -139,152 +176,16 @@ void gb_ppu_step(void)
 			gb_ppu_set_stat_mode(STAT_MODE_2);
 		else if (ppu_dot_counter > 80 && ppu_dot_counter <= 252 &&
 			 stat_mode != STAT_MODE_3) { // vram region
-
-			gb_ppu_draw_line(ly_value, gb_memory_read(SCX_ADDR),
-					 gb_memory_read(SCY_ADDR));
+			gb_ppu_draw_line();
 
 			gb_ppu_set_stat_mode(STAT_MODE_3);
 		} else if (ppu_dot_counter > 252 && ppu_dot_counter <= 456 &&
 			   stat_mode != STAT_MODE_0) { // hblank region
 			gb_ppu_set_stat_mode(STAT_MODE_0);
-			if (CHK_BIT(gb_memory_read(STAT_ADDR), 3))
-				gb_memory_set_bit(IF_ADDR, 1);
+			if (mode_0_sel)
+				SET_BIT(mem.map[IF_ADDR], 1);
 		}
 	}
-}
-
-/**
- * @brief Background and window color to palette conversion
- * @details Updates a color to its appropriate palette based on value of the
- * Background Palette Register. each number assigned corresponds to a color
- * referenced in STM32's L8 color mode.
- * @return Nothing
- */
-static void gb_ppu_check_bgp()
-{
-	uint8_t BGP = gb_memory_read(BGP_ADDR);
-	for (int i = 0; i < 4; i++) {
-		switch ((BGP >> (i * 2)) & 0x03) {
-		case 0:
-			bgp_color_to_palette[i] = 0XFF9BBC0F;
-			break;
-		case 1:
-			bgp_color_to_palette[i] = 0XFF8BAC0F;
-			break;
-		case 2:
-			bgp_color_to_palette[i] = 0XFF306230;
-			break;
-		case 3:
-			bgp_color_to_palette[i] = 0XFF0F380F;
-			break;
-		default:
-			break;
-		}
-	}
-}
-
-/**
- * @brief OBP0 register color to palette conversion
- * @details Updates a color to its appropriate palette based on value of the
- * OBP0 Register. each number assigned corresponds to a color referenced in
- * STM32's L8 color mode.
- * @return Nothing
- */
-static void gb_ppu_check_obp0()
-{
-	uint8_t BGP = gb_memory_read(OBP0_ADDR);
-	for (int i = 0; i < 4; i++) {
-		switch ((BGP >> (i * 2)) & 0x03) {
-		case 0:
-			obp0_color_to_palette[i] = 0XFF9BBC0F;
-			break;
-		case 1:
-			obp0_color_to_palette[i] = 0XFF8BAC0F;
-			break;
-		case 2:
-			obp0_color_to_palette[i] = 0XFF306230;
-			break;
-		case 3:
-			obp0_color_to_palette[i] = 0XFF0F380F;
-			break;
-		default:
-			break;
-		}
-	}
-}
-
-/**
- * @brief OBP1 register color to palette conversion
- * @details Updates a color to its appropriate palette based on value of the
- * OBP1 Register. each number assigned corresponds to a color referenced in
- * STM32's L8 color mode.
- * @return Nothing
- */
-static void gb_ppu_check_obp1()
-{
-	uint8_t BGP = gb_memory_read(OBP1_ADDR);
-	for (int i = 0; i < 4; i++) {
-		switch ((BGP >> (i * 2)) & 0x03) {
-		case 0:
-			obp1_color_to_palette[i] = 0XFF9BBC0F;
-			break;
-		case 1:
-			obp1_color_to_palette[i] = 0XFF8BAC0F;
-			break;
-		case 2:
-			obp1_color_to_palette[i] = 0XFF306230;
-			break;
-		case 3:
-			obp1_color_to_palette[i] = 0XFF0F380F;
-			break;
-		default:
-			break;
-		}
-	}
-}
-
-/**
- * @brief Read LCDC Register to find appropriate Background & Tile Data Address
- * @details This function Reads from the LCDC Register and depending on the
- * value of the 4th bit, it will change the Background & Window Tile Data Select
- * Address to 0x8000 on high or to 0x8800 on low.
- * @return Background & Window Tile Data Select Address
- * @note Background & Window Tile Data Select should be 0x9000 on a low 4th bit
- * in a real Gameboy, but it is much simpler to implement this way with
- * emulation, the  0x400 offset is accounted for in gb_ppu_get_tile_line_data()
- */
-static uint16_t gb_ppu_get_background_window_tile_data_select()
-{
-	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 4)) ? TILE_DATA_UNSIGNED_ADDR
-						       : TILE_DATA_SIGNED_ADDR;
-}
-
-/**
- * @brief Read LCDC Register to find appropriate Background Tile Display Select
- * Address
- * @details This function Reads from the LCDC Register and depending on the
- * value of the 3rd bit, it will change the Background Tile Display Address to
- * 0X9C00 on high or to 0x9800 on low.
- * @return Background Tile Display Select Address
- */
-static uint16_t gb_ppu_get_background_tile_display_select()
-{
-	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 3)) ? TILE_MAP_LOCATION_HIGH
-						       : TILE_MAP_LOCATION_LOW;
-}
-
-/**
- * @brief Read LCDC Register to find appropriate Window Tile Display Select
- * Address
- * @details This function Reads from the LCDC Register and depending on the
- * value of the 4th bit, it will change the Window Tile Display Address to
- * 0X9C00 on high or to 0x9800 on low.
- * @return Window Tile Display Select Address
- */
-static uint16_t gb_ppu_get_window_tile_display_select()
-{
-	return (CHK_BIT(gb_memory_read(LCDC_ADDR), 6)) ? TILE_MAP_LOCATION_HIGH
-						       : TILE_MAP_LOCATION_LOW;
 }
 
 /**
@@ -299,7 +200,7 @@ static uint16_t gb_ppu_get_window_tile_display_select()
  * particular line belonging to a tile in the Gameboy's VRAM
  */
 static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_offset,
-					  uint16_t tile_data_addr, uint16_t display_addr)
+					  uint16_t display_addr)
 {
 	if (tile_data_addr == 0x8000) {
 		return gb_memory_read_short(tile_data_addr +
@@ -319,14 +220,14 @@ static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_off
  * @param ly value of the LY Register
  * @return Nothing
  */
-static void gb_ppu_check_lyc(uint8_t ly)
+static inline void gb_ppu_check_lyc(void)
 {
-	if (ly == gb_memory_read(LYC_ADDR)) {
-		gb_memory_set_bit(STAT_ADDR, 2);
-		if (CHK_BIT(gb_memory_read(STAT_ADDR), 6))
-			gb_memory_set_bit(IF_ADDR, 1);
+	if (mem.map[LYC_ADDR] == ly) {
+		SET_BIT(mem.map[LYC_ADDR], 2);
+		if (lyc_int_sel)
+			SET_BIT(mem.map[IF_ADDR], 1);
 	} else {
-		gb_memory_reset_bit(STAT_ADDR, 2);
+		RST_BIT(mem.map[STAT_ADDR], 2);
 	}
 }
 
@@ -340,20 +241,20 @@ static void gb_ppu_set_stat_mode(uint8_t mode)
 	stat_mode = mode;
 	switch (mode) {
 	case STAT_MODE_0:
-		gb_memory_reset_bit(STAT_ADDR, 1);
-		gb_memory_reset_bit(STAT_ADDR, 0);
+		RST_BIT(mem.map[STAT_ADDR], 1);
+		RST_BIT(mem.map[STAT_ADDR], 0);
 		break; // 00
 	case STAT_MODE_1:
-		gb_memory_reset_bit(STAT_ADDR, 1);
-		gb_memory_set_bit(STAT_ADDR, 0);
+		RST_BIT(mem.map[STAT_ADDR], 1);
+		SET_BIT(mem.map[STAT_ADDR], 0);
 		break; // 01
 	case STAT_MODE_2:
-		gb_memory_set_bit(STAT_ADDR, 1);
-		gb_memory_reset_bit(STAT_ADDR, 0);
+		SET_BIT(mem.map[STAT_ADDR], 1);
+		RST_BIT(mem.map[STAT_ADDR], 0);
 		break; // 10
 	case STAT_MODE_3:
-		gb_memory_set_bit(STAT_ADDR, 1);
-		gb_memory_set_bit(STAT_ADDR, 0);
+		SET_BIT(mem.map[STAT_ADDR], 1);
+		SET_BIT(mem.map[STAT_ADDR], 0);
 		break; // 11
 	default:
 		break;
@@ -370,22 +271,16 @@ static void gb_ppu_set_stat_mode(uint8_t mode)
  */
 static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
 {
-	ucGBLine[pixel_pos + current_line] = data;
+	ucGBLine[(ly * GAMEBOY_SCREEN_WIDTH) + pixel_pos] = data;
 }
 
 /**
  * @brief Update line buffer with background information
  * @details Populates the line buffer with Background information on the line ly
- * @param ly LY Register Value
- * @param scx X location of the left most position on the background tile map
- * @param scy Y location of the top most position on the background tile map
- * @param tile_data_addr Start Address of location in VRAM of Background Tiles
- * @param display_addr  Start Address holding the offset in VRAM for each Tile
  * displayed on Screen
  * @returns Nothing
  */
-static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
-					uint16_t tile_data_addr, uint16_t display_addr)
+static void gb_ppu_draw_line_background(void)
 {
 	uint16_t tile_offset = (((uint8_t)(scy + ly) / 8) * 32) +
 			       (scx / 8); // gives the address offset in the tile map
@@ -394,8 +289,8 @@ static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
 
 	uint16_t first_tile = tile_offset % 32;
 	uint16_t tile_data =
-		gb_ppu_get_tile_line_data(tile_offset, line_offset, tile_data_addr,
-					  display_addr); // tile data holds tile line information
+		gb_ppu_get_tile_line_data(tile_offset, line_offset,
+					  bg_display_addr); // tile data holds tile line information
 
 	for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
 
@@ -429,10 +324,10 @@ static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
 			if (first_tile + (tile_offset % 32) >= 12 &&
 			    (tile_offset % 32) < first_tile)
 				tile_data = gb_ppu_get_tile_line_data(tile_offset - 32, line_offset,
-								      tile_data_addr, display_addr);
+								      bg_display_addr);
 			else
 				tile_data = gb_ppu_get_tile_line_data(tile_offset, line_offset,
-								      tile_data_addr, display_addr);
+								      bg_display_addr);
 		}
 	}
 }
@@ -441,16 +336,10 @@ static void gb_ppu_draw_line_background(uint8_t ly, uint8_t scx, uint8_t scy,
  * @brief Update line buffer with window information
  * @details Populates the line buffer with window information if it is currently
  * displayed on the line ly
- * @param ly LY Register Value
- * @param wx Window X position
- * @param wy Window Y position
- * @param tile_data_addr Start Address of location in VRAM of Window Tiles
- * @param display_addr  Start Address holding the offset in VRAM for each Tile
  * displayed on Screen
  * @returns Nothing
  */
-static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t tile_data_addr,
-				    uint16_t display_addr)
+static void gb_ppu_draw_line_window(void)
 {
 	if (wy > ly || wy > 143 || wx > 166)
 		return;
@@ -460,9 +349,8 @@ static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t
 	uint8_t line_offset = (((ly - wy) % 8)) * 2; // gives the line offset in the tile
 	uint8_t pixl_offset = (wx - 7) % 8;	     // gives current pixel offset
 
-	uint16_t tile_data =
-		gb_ppu_get_tile_line_data(tile_offset, line_offset, tile_data_addr,
-					  display_addr); // tile data holds tile line information
+	uint16_t tile_data = gb_ppu_get_tile_line_data(
+		tile_offset, line_offset, wn_display_addr); // tile data holds tile line information
 
 	for (int j = (wx - 7); j < GAMEBOY_SCREEN_WIDTH; j++) {
 		uint32_t pixel_data = 0;
@@ -493,7 +381,7 @@ static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t
 			tile_offset++;
 			pixl_offset = 0;
 			tile_data = gb_ppu_get_tile_line_data(tile_offset, line_offset,
-							      tile_data_addr, display_addr);
+							      wn_display_addr);
 		}
 	}
 }
@@ -501,10 +389,9 @@ static void gb_ppu_draw_line_window(uint8_t ly, uint8_t wx, uint8_t wy, uint16_t
 /**
  * @brief  Update line buffer with object information
  * @details Populates the line buffer with object sprites on line ly
- * @param ly LY Register Value
  * @returns Nothing
  */
-static void gb_ppu_draw_line_objects(uint8_t ly)
+static void gb_ppu_draw_line_objects(void)
 {
 	for (int obj = 0; obj < 40; obj++) {
 		// must be signed for logic to work
@@ -516,8 +403,6 @@ static void gb_ppu_draw_line_objects(uint8_t ly)
 		uint8_t obj_y_flip = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 6);
 		uint8_t obj_x_flip = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 5);
 		uint8_t obj_palette = CHK_BIT(gb_memory_read(OAM_BASE + (obj * 4) + 3), 4);
-		uint8_t obj_size = CHK_BIT(gb_memory_read(LCDC_ADDR), 2);
-
 		uint8_t obj_height = (obj_size == 0) ? 8 : 16;
 
 		if (y_coordinate <= ly && (y_coordinate + obj_height) > ly) {
@@ -571,28 +456,14 @@ static void gb_ppu_draw_line_objects(uint8_t ly)
  * @details Populates the line buffer with data related to a line ly, copies
  * line buffer to appropriate location in frame buffer
  * @param ly LY Register Value
- * @param scx Scroll X Register Value
- * @param scy Scroll Y Register Value
  * @returns Nothing
  */
-static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
+static void gb_ppu_draw_line(void)
 {
-
-	// update Palettes
-	gb_ppu_check_bgp();
-	gb_ppu_check_obp0();
-	gb_ppu_check_obp1();
-
-	uint16_t tile_data_addr = gb_ppu_get_background_window_tile_data_select();
-	current_line = ly * GAMEBOY_SCREEN_WIDTH;
-
-	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 0)) {
-		gb_ppu_draw_line_background(ly, scx, scy, tile_data_addr,
-					    gb_ppu_get_background_tile_display_select());
-		if (CHK_BIT(gb_memory_read(LCDC_ADDR), 5)) {
-			gb_ppu_draw_line_window(ly, gb_memory_read(WX_ADDR),
-						gb_memory_read(WY_ADDR), tile_data_addr,
-						gb_ppu_get_window_tile_display_select());
+	if (bg_wn_enable) {
+		gb_ppu_draw_line_background();
+		if (wn_enable) {
+			gb_ppu_draw_line_window();
 		}
 	} else {
 		for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
@@ -600,8 +471,8 @@ static void gb_ppu_draw_line(uint8_t ly, uint8_t scx, uint8_t scy)
 		}
 	}
 
-	if (CHK_BIT(gb_memory_read(LCDC_ADDR), 1)) {
-		gb_ppu_draw_line_objects(ly);
+	if (obj_enable) {
+		gb_ppu_draw_line_objects();
 	}
 
 	if (ly == 143) {
@@ -616,7 +487,88 @@ uint8_t gb_ppu_memory_read(uint16_t address)
 
 void gb_ppu_memory_write(uint16_t address, uint8_t data)
 {
+	uint32_t *palette_sel = NULL;
+
 	switch (address) {
+	case LCDC_ADDR:
+		ppu_enable = CHK_BIT(data, 7) ? true : false;
+		wn_display_addr = CHK_BIT(data, 6) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
+		wn_enable = CHK_BIT(data, 5) ? true : false;
+		tile_data_addr = CHK_BIT(data, 4) ? TILE_DATA_UNSIGNED_ADDR : TILE_DATA_SIGNED_ADDR;
+		bg_display_addr = CHK_BIT(data, 3) ? TILE_MAP_LOCATION_HIGH : TILE_MAP_LOCATION_LOW;
+		obj_size = CHK_BIT(data, 2) ? true : false;
+		obj_enable = CHK_BIT(data, 1) ? true : false;
+		bg_wn_enable = CHK_BIT(data, 0) ? true : false;
+		mem.map[address] = data;
+		return;
+
+	case STAT_ADDR:
+		lyc_int_sel = CHK_BIT(data, 6) ? true : false;
+		mode_2_sel = CHK_BIT(data, 5) ? true : false;
+		mode_1_sel = CHK_BIT(data, 4) ? true : false;
+		mode_0_sel = CHK_BIT(data, 3) ? true : false;
+		mem.map[address] = (data & ~0x7) | mem.map[address] & 0x7;
+		return;
+
+	case SCY_ADDR:
+		scy = data;
+		mem.map[address] = data;
+		return;
+
+	case SCX_ADDR:
+		scx = data;
+		mem.map[address] = data;
+		return;
+
+	case LY_ADDR:
+		return;
+
+	case LYC_ADDR:
+		mem.map[address] = data;
+		return;
+
+	case DMA_ADDR:
+		for (uint16_t i = 0; i < 40 * 4; i++)
+			gb_memory_write(OAM_BASE + i, gb_memory_read((data << 8) + i));
+		return;
+
+	case BGP_ADDR:
+		palette_sel = (palette_sel == NULL) ? bgp_color_to_palette : palette_sel;
+	case OBP0_ADDR:
+		palette_sel = (palette_sel == NULL) ? obp0_color_to_palette : palette_sel;
+	case OBP1_ADDR:
+		palette_sel = (palette_sel == NULL) ? obp1_color_to_palette : palette_sel;
+
+		for (int i = 0; i < 4; i++) {
+			switch ((data >> (i * 2)) & 0x03) {
+			case 0:
+				palette_sel[i] = 0XFF9BBC0F;
+				break;
+			case 1:
+				palette_sel[i] = 0XFF8BAC0F;
+				break;
+			case 2:
+				palette_sel[i] = 0XFF306230;
+				break;
+			case 3:
+				palette_sel[i] = 0XFF0F380F;
+				break;
+			default:
+				break;
+			}
+		}
+		mem.map[address] = data;
+		return;
+
+	case WY_ADDR:
+		wy = data;
+		mem.map[address] = data;
+		return;
+
+	case WX_ADDR:
+		wx = data;
+		mem.map[address] = data;
+		return;
 
 	default:
 		mem.map[address] = data;

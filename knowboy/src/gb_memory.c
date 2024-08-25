@@ -79,7 +79,7 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_
 		mem.map[NR51_ADDR] = 0xF3;
 		mem.map[NR52_ADDR] = 0xF1;
 		mem.map[LY_ADDR] = 0x99;
-		mem.map[BGP_ADDR] = 0xFC;
+		gb_memory_write(mem.map[BGP_ADDR], 0xFC);
 		mem.map[BOOT_EN_ADDR] = 0x01;
 		mem.map[0xFFFA] = 0x39;
 		mem.map[0xFFFB] = 0x01;
@@ -139,12 +139,6 @@ void gb_memory_write(uint16_t address, uint8_t data)
 		if (address == JOY_ADDR) {
 			joypad_sel_dir = data & 0x10;
 			joypad_sel_but = data & 0x20;
-			return;
-		}
-
-		else if (address == DMA_ADDR) {
-			for (uint16_t i = 0; i < 40 * 4; i++)
-				gb_memory_write(OAM_BASE + i, gb_memory_read((data << 8) + i));
 			return;
 		}
 
