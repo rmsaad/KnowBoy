@@ -17,6 +17,17 @@
 
 #include <string.h>
 
+#define PPU_OBJECT_WIDTH	8
+#define PPU_OBJECT_HEIGHT_SHORT 8
+#define PPU_OBJECT_HEIGHT_TALL	16
+
+#define PPU_MAX_OBJECTS		     40
+#define PPU_MAX_OBJECTS_PER_SCANLINE 10
+
+#define PPU_VBLANK_SCANLINE   144
+#define PPU_FINAL_SCANLINE    153
+#define PPU_DOTS_PER_SCANLINE 456
+
 // Gameboy Memory struct
 extern memory_t mem;
 
@@ -142,49 +153,66 @@ void gb_ppu_step(void)
 	if (!ppu_enable) {
 		ly = 0;
 		mem.map[LY_ADDR] = ly;
+		ppu_dot_counter = 0;
 		return;
 	}
 
-	ppu_dot_counter += 4;
+	for (int dot_cycles = 0; dot_cycles < 4; dot_cycles++) {
 
-	if (ppu_dot_counter > 456) { // end of hblank or vblank
-		ly++;
-		gb_ppu_check_lyc();
-		if (ly > 153) { // end of vblank
-			gb_ppu_set_stat_mode(STAT_MODE_2);
-			ly = 0;
-
-			if (mode_2_sel)
-				SET_BIT(mem.map[IF_ADDR], 1);
+		if (ly > 143 && ppu_dot_counter != 455) {
+			ppu_dot_counter++;
+			continue;
 		}
 
-		mem.map[LY_ADDR] = ly;
-		ppu_dot_counter -= 456;
-	}
+		if (ppu_dot_counter == 0) {
+			// OAM region
+			gb_ppu_set_stat_mode(STAT_MODE_2);
+		}
 
-	if (ly > 143) { // vblank region
-		if (stat_mode != STAT_MODE_1) {
-			gb_ppu_set_stat_mode(STAT_MODE_1);
-			if (mode_1_sel)
+		if (ppu_dot_counter == 80) {
+			// VRAM region
+			gb_ppu_set_stat_mode(STAT_MODE_3);
+		}
+
+		if (ppu_dot_counter == 252) {
+			// HBlank region
+			gb_ppu_set_stat_mode(STAT_MODE_0);
+			gb_ppu_draw_line();
+			if (mode_0_sel) {
 				SET_BIT(mem.map[IF_ADDR], 1);
-			if (ly == 0x90) {
-				SET_BIT(mem.map[IF_ADDR], 0);
 			}
 		}
-	} else {
-		if (ppu_dot_counter <= 80 && stat_mode != STAT_MODE_2) // oam region
-			gb_ppu_set_stat_mode(STAT_MODE_2);
-		else if (ppu_dot_counter > 80 && ppu_dot_counter <= 252 &&
-			 stat_mode != STAT_MODE_3) { // vram region
-			gb_ppu_draw_line();
 
-			gb_ppu_set_stat_mode(STAT_MODE_3);
-		} else if (ppu_dot_counter > 252 && ppu_dot_counter <= 456 &&
-			   stat_mode != STAT_MODE_0) { // hblank region
-			gb_ppu_set_stat_mode(STAT_MODE_0);
-			if (mode_0_sel)
-				SET_BIT(mem.map[IF_ADDR], 1);
+		if (ppu_dot_counter == 455) {
+			ly++;
+			gb_ppu_check_lyc();
+
+			if (ly > 143) {
+				gb_ppu_set_stat_mode(STAT_MODE_1);
+				if (mode_1_sel) {
+					SET_BIT(mem.map[IF_ADDR], 1);
+				}
+
+				if (ly == PPU_VBLANK_SCANLINE) {
+					SET_BIT(mem.map[IF_ADDR], 0);
+				}
+			}
+
+			if (ly > PPU_FINAL_SCANLINE) {
+				// End of VBlank too
+				gb_ppu_set_stat_mode(STAT_MODE_2);
+				ly = 0;
+
+				if (mode_2_sel) {
+					SET_BIT(mem.map[IF_ADDR], 1);
+				}
+			}
+
+			mem.map[LY_ADDR] = ly;
+			ppu_dot_counter -= PPU_DOTS_PER_SCANLINE;
 		}
+
+		ppu_dot_counter++;
 	}
 }
 

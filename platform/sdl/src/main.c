@@ -19,7 +19,6 @@
 #include "gb_memory.h"
 #include "gb_ppu.h"
 
-
 #define MAX_LINE_LENGTH 1024
 
 static uint8_t dir_input = 0;
