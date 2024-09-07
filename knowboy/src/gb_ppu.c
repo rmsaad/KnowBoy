@@ -28,6 +28,11 @@
 #define PPU_FINAL_SCANLINE    153
 #define PPU_DOTS_PER_SCANLINE 456
 
+#define LIGHT_SHADE  0XFF9BBC0F
+#define MEDIUM_SHADE 0XFF8BAC0F
+#define DARK_SHADE   0XFF306230
+#define BLACK_SHADE  0XFF0F380F
+
 // Gameboy Memory struct
 extern memory_t mem;
 
@@ -571,16 +576,16 @@ void gb_ppu_memory_write(uint16_t address, uint8_t data)
 		for (int i = 0; i < 4; i++) {
 			switch ((data >> (i * 2)) & 0x03) {
 			case 0:
-				palette_sel[i] = 0XFF9BBC0F;
+				palette_sel[i] = LIGHT_SHADE;
 				break;
 			case 1:
-				palette_sel[i] = 0XFF8BAC0F;
+				palette_sel[i] = MEDIUM_SHADE;
 				break;
 			case 2:
-				palette_sel[i] = 0XFF306230;
+				palette_sel[i] = DARK_SHADE;
 				break;
 			case 3:
-				palette_sel[i] = 0XFF0F380F;
+				palette_sel[i] = BLACK_SHADE;
 				break;
 			default:
 				break;
