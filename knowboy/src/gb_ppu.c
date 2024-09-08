@@ -310,6 +310,11 @@ static void gb_ppu_find_object_data(void)
 			CHK_BIT(mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 3], 4);
 		uint8_t obj_height =
 			(obj_size == 0) ? PPU_OBJECT_HEIGHT_SHORT : PPU_OBJECT_HEIGHT_TALL;
+
+		if (obj_height == PPU_OBJECT_HEIGHT_TALL) {
+			data_tile = data_tile & 0xFE;
+		}
+
 		uint8_t line_offset =
 			obj_y_flip ? ((obj_height - 1) - (ly - y_coord)) * 2 : (ly - y_coord) * 2;
 		uint16_t address = TILE_DATA_UNSIGNED_ADDR + (data_tile * 0x10) + line_offset;
