@@ -501,7 +501,7 @@ static void gb_ppu_draw_line(void)
 		}
 	} else {
 		for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
-			gb_ppu_update_frame_buffer(1, j);
+			gb_ppu_update_frame_buffer(LIGHT_SHADE, j);
 		}
 	}
 
