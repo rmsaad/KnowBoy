@@ -24,14 +24,33 @@
 #define PPU_MAX_OBJECTS		     40
 #define PPU_MAX_OBJECTS_PER_SCANLINE 10
 
-#define PPU_VBLANK_SCANLINE   144
-#define PPU_FINAL_SCANLINE    153
 #define PPU_DOTS_PER_SCANLINE 456
+
+#define MODE_2_START	   0
+#define MODE_3_START	   80
+#define MODE_0_START_MIN   252
+#define MODE_1_SCANLINE	   144
+#define PPU_FINAL_SCANLINE 153
 
 #define LIGHT_SHADE  0XFF9BBC0F
 #define MEDIUM_SHADE 0XFF8BAC0F
 #define DARK_SHADE   0XFF306230
 #define BLACK_SHADE  0XFF0F380F
+
+typedef struct {
+	uint32_t buf[8];
+	uint8_t obj_index;
+	int16_t x_coord;
+	int16_t y_coord;
+	uint8_t start;
+	uint8_t len;
+	bool obj_prio;
+} oam_obj_t;
+
+static oam_obj_t oam_line_slot[PPU_MAX_OBJECTS_PER_SCANLINE];
+static uint8_t oam_line_prio_buffer[GAMEBOY_SCREEN_WIDTH];
+static uint32_t oam_line_data_buffer[GAMEBOY_SCREEN_WIDTH];
+static uint8_t bg_wn_buffer[GAMEBOY_SCREEN_WIDTH];
 
 // Gameboy Memory struct
 extern memory_t mem;
@@ -39,14 +58,16 @@ extern memory_t mem;
 // dot counter
 static uint32_t ppu_dot_counter;
 
+// oam object count
+uint8_t oam_obj_count = 0;
+
 // Palettes
 static uint32_t bgp_color_to_palette[4];
 static uint32_t obp0_color_to_palette[4];
 static uint32_t obp1_color_to_palette[4];
 
 // Frame Buffer variables
-static uint32_t ucGBLine[GAMEBOY_SCREEN_WIDTH * 3 * 2000];
-static uint8_t ucBGWINline[GAMEBOY_SCREEN_WIDTH];
+static uint32_t frame_buffer[GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * sizeof(uint32_t)];
 
 // Function Pointer pointing to external function in display.c
 static gb_ppu_display_frame_buffer_t gb_ppu_display_frame_buffer;
@@ -84,6 +105,8 @@ static uint8_t wy = 0;
 static uint8_t wx = 0;
 
 /*Function Prototypes*/
+static void gb_ppu_oam_process_next_object(uint8_t obj_index);
+static void gb_ppu_find_object_data(void);
 static void inline gb_ppu_check_lyc(void);
 static void gb_ppu_set_stat_mode(uint8_t mode);
 static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos);
@@ -112,7 +135,9 @@ void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame
  */
 void gb_ppu_init(void)
 {
-	memset(ucGBLine, 0, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4);
+	memset(frame_buffer, 0, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * sizeof(uint32_t));
+	memset(oam_line_data_buffer, 0, GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
+	memset(oam_line_prio_buffer, 0, GAMEBOY_SCREEN_WIDTH * sizeof(uint8_t));
 	ppu_dot_counter = 0;
 	stat_mode = 0;
 
@@ -135,6 +160,8 @@ void gb_ppu_init(void)
 	ly = 0;
 	wy = 0;
 	wx = 0;
+
+	oam_obj_count = 0;
 }
 
 /**
@@ -164,47 +191,61 @@ void gb_ppu_step(void)
 
 	for (int dot_cycles = 0; dot_cycles < 4; dot_cycles++) {
 
-		if (ly > 143 && ppu_dot_counter != 455) {
+		if (ly > 143 && ppu_dot_counter != (PPU_DOTS_PER_SCANLINE - 1)) {
 			ppu_dot_counter++;
 			continue;
 		}
 
-		if (ppu_dot_counter == 0) {
+		if (ppu_dot_counter >= MODE_2_START && ppu_dot_counter < MODE_3_START) {
 			// OAM region
-			gb_ppu_set_stat_mode(STAT_MODE_2);
-		}
+			if (ppu_dot_counter == 0) {
+				gb_ppu_set_stat_mode(STAT_MODE_2);
+			}
 
-		if (ppu_dot_counter == 80) {
-			// VRAM region
-			gb_ppu_set_stat_mode(STAT_MODE_3);
-		}
-
-		if (ppu_dot_counter == 252) {
-			// HBlank region
-			gb_ppu_set_stat_mode(STAT_MODE_0);
-			gb_ppu_draw_line();
-			if (mode_0_sel) {
-				SET_BIT(mem.map[IF_ADDR], 1);
+			if (ppu_dot_counter % 2 == 0) {
+				gb_ppu_oam_process_next_object(ppu_dot_counter / 2);
 			}
 		}
 
-		if (ppu_dot_counter == 455) {
+		else if (ppu_dot_counter >= MODE_3_START && ppu_dot_counter < MODE_0_START_MIN) {
+			// VRAM region
+			if (ppu_dot_counter == MODE_3_START) {
+				gb_ppu_set_stat_mode(STAT_MODE_3);
+				gb_ppu_find_object_data();
+			}
+		}
+
+		else if (ppu_dot_counter >= MODE_0_START_MIN &&
+			 ppu_dot_counter < (PPU_DOTS_PER_SCANLINE - 1)) {
+			// HBlank region
+			if (ppu_dot_counter == MODE_0_START_MIN) {
+				gb_ppu_set_stat_mode(STAT_MODE_0);
+				gb_ppu_draw_line();
+				if (mode_0_sel) {
+					SET_BIT(mem.map[IF_ADDR], 1);
+				}
+			}
+		}
+
+		else if (ppu_dot_counter == (PPU_DOTS_PER_SCANLINE - 1)) {
 			ly++;
+			oam_obj_count = 0;
 			gb_ppu_check_lyc();
 
-			if (ly > 143) {
+			if (ly >= MODE_1_SCANLINE) {
+				// VBlank region
 				gb_ppu_set_stat_mode(STAT_MODE_1);
 				if (mode_1_sel) {
 					SET_BIT(mem.map[IF_ADDR], 1);
 				}
 
-				if (ly == PPU_VBLANK_SCANLINE) {
+				if (ly == MODE_1_SCANLINE) {
 					SET_BIT(mem.map[IF_ADDR], 0);
 				}
 			}
 
 			if (ly > PPU_FINAL_SCANLINE) {
-				// End of VBlank too
+				// End of VBlank region
 				gb_ppu_set_stat_mode(STAT_MODE_2);
 				ly = 0;
 
@@ -221,6 +262,92 @@ void gb_ppu_step(void)
 	}
 }
 
+static void gb_ppu_oam_process_next_object(uint8_t obj_index)
+{
+	if (oam_obj_count >= PPU_MAX_OBJECTS_PER_SCANLINE) {
+		return;
+	}
+
+	int16_t y_coord = mem.map[OAM_BASE + (obj_index * 4)] - 16;
+	int16_t x_coord = mem.map[OAM_BASE + (obj_index * 4) + 1] - 8;
+	uint8_t obj_height = (obj_size == 0) ? PPU_OBJECT_HEIGHT_SHORT : PPU_OBJECT_HEIGHT_TALL;
+
+	if (y_coord <= ly && (y_coord + obj_height) > ly) {
+
+		oam_line_slot[oam_obj_count].x_coord = x_coord;
+		oam_line_slot[oam_obj_count].y_coord = y_coord;
+		oam_line_slot[oam_obj_count].obj_index = obj_index;
+		if (x_coord + PPU_OBJECT_WIDTH < 0 || x_coord >= GAMEBOY_SCREEN_WIDTH) {
+			oam_line_slot[oam_obj_count].start = 0;
+			oam_line_slot[oam_obj_count].len = 0;
+		} else if (x_coord < 0) {
+			oam_line_slot[oam_obj_count].start = 0;
+			oam_line_slot[oam_obj_count].len = PPU_OBJECT_WIDTH + x_coord;
+		} else if (x_coord + PPU_OBJECT_WIDTH >= GAMEBOY_SCREEN_WIDTH) {
+			oam_line_slot[oam_obj_count].start = x_coord;
+			oam_line_slot[oam_obj_count].len = (GAMEBOY_SCREEN_WIDTH - 1) - x_coord;
+		} else {
+			oam_line_slot[oam_obj_count].start = x_coord;
+			oam_line_slot[oam_obj_count].len = PPU_OBJECT_WIDTH;
+		}
+		oam_obj_count++;
+	}
+}
+
+static void gb_ppu_find_object_data(void)
+{
+	for (int i = 0; i < oam_obj_count; i++) {
+		int16_t x_coord = oam_line_slot[i].x_coord;
+		int16_t y_coord = oam_line_slot[i].y_coord;
+		uint8_t data_tile = mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 2];
+		uint8_t obj_prio =
+			CHK_BIT(mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 3], 7);
+		uint8_t obj_y_flip =
+			CHK_BIT(mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 3], 6);
+		uint8_t obj_x_flip =
+			CHK_BIT(mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 3], 5);
+		uint8_t obj_palette =
+			CHK_BIT(mem.map[OAM_BASE + (oam_line_slot[i].obj_index * 4) + 3], 4);
+		uint8_t obj_height =
+			(obj_size == 0) ? PPU_OBJECT_HEIGHT_SHORT : PPU_OBJECT_HEIGHT_TALL;
+		uint8_t line_offset =
+			obj_y_flip ? ((obj_height - 1) - (ly - y_coord)) * 2 : (ly - y_coord) * 2;
+		uint16_t address = TILE_DATA_UNSIGNED_ADDR + (data_tile * 0x10) + line_offset;
+		uint16_t tile_data = CAT_BYTES(mem.map[address], mem.map[address + 1]);
+		uint32_t *palette =
+			(obj_palette) ? &obp1_color_to_palette[0] : &obp0_color_to_palette[0];
+
+		for (int pixel_num = 0, buf_pos = 0; pixel_num < 8; pixel_num++) {
+
+			uint16_t color_info = (obj_x_flip)
+						      ? (((tile_data >> pixel_num) & 0x0101) << 7)
+						      : ((tile_data << pixel_num) & 0x8080);
+			uint32_t pixel_data = 0;
+
+			switch (color_info) {
+			case 0x0000:
+				pixel_data = 0;
+				break;
+			case 0x0080:
+				pixel_data = palette[1];
+				break;
+			case 0x8000:
+				pixel_data = palette[2];
+				break;
+			case 0x8080:
+				pixel_data = palette[3];
+				break;
+			}
+
+			if (x_coord + pixel_num >= 0 &&
+			    (x_coord + pixel_num) < GAMEBOY_SCREEN_WIDTH) {
+				oam_line_slot[i].buf[buf_pos] = pixel_data;
+				buf_pos++;
+			}
+		}
+		oam_line_slot[i].obj_prio = obj_prio;
+	}
+}
 /**
  * @brief Finds specific line data of a tile using the tile_offset and
  * line_offset
@@ -304,7 +431,7 @@ static void gb_ppu_set_stat_mode(uint8_t mode)
  */
 static void gb_ppu_update_frame_buffer(uint32_t data, int pixel_pos)
 {
-	ucGBLine[(ly * GAMEBOY_SCREEN_WIDTH) + pixel_pos] = data;
+	frame_buffer[(ly * GAMEBOY_SCREEN_WIDTH) + pixel_pos] = data;
 }
 
 /**
@@ -332,19 +459,19 @@ static void gb_ppu_draw_line_background(void)
 		switch (((tile_data << pixl_offset) & 0x8080)) {
 		case 0x0000:
 			pixel_data = bgp_color_to_palette[0];
-			ucBGWINline[j] = 0;
+			bg_wn_buffer[j] = 0;
 			break;
 		case 0x0080:
 			pixel_data = bgp_color_to_palette[1];
-			ucBGWINline[j] = 1;
+			bg_wn_buffer[j] = 1;
 			break;
 		case 0x8000:
 			pixel_data = bgp_color_to_palette[2];
-			ucBGWINline[j] = 2;
+			bg_wn_buffer[j] = 2;
 			break;
 		case 0x8080:
 			pixel_data = bgp_color_to_palette[3];
-			ucBGWINline[j] = 3;
+			bg_wn_buffer[j] = 3;
 			break;
 		}
 
@@ -391,19 +518,19 @@ static void gb_ppu_draw_line_window(void)
 		switch (((tile_data << pixl_offset) & 0x8080)) {
 		case 0x0000:
 			pixel_data = bgp_color_to_palette[0];
-			ucBGWINline[j] = 0;
+			bg_wn_buffer[j] = 0;
 			break;
 		case 0x0080:
 			pixel_data = bgp_color_to_palette[1];
-			ucBGWINline[j] = 1;
+			bg_wn_buffer[j] = 1;
 			break;
 		case 0x8000:
 			pixel_data = bgp_color_to_palette[2];
-			ucBGWINline[j] = 2;
+			bg_wn_buffer[j] = 2;
 			break;
 		case 0x8080:
 			pixel_data = bgp_color_to_palette[3];
-			ucBGWINline[j] = 3;
+			bg_wn_buffer[j] = 3;
 			break;
 		}
 
@@ -426,60 +553,54 @@ static void gb_ppu_draw_line_window(void)
  */
 static void gb_ppu_draw_line_objects(void)
 {
-	for (int obj = 0; obj < 40; obj++) {
-		// must be signed for logic to work
-		int16_t y_coordinate = mem.map[OAM_BASE + (obj * 4)] - 16;
-		// "" "" "" same here
-		int16_t x_coordinate = mem.map[OAM_BASE + (obj * 4) + 1] - 8;
-		uint8_t data_tile = mem.map[OAM_BASE + (obj * 4) + 2];
-		uint8_t obj_prio = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 7);
-		uint8_t obj_y_flip = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 6);
-		uint8_t obj_x_flip = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 5);
-		uint8_t obj_palette = CHK_BIT(mem.map[OAM_BASE + (obj * 4) + 3], 4);
-		uint8_t obj_height = (obj_size == 0) ? 8 : 16;
 
-		if (y_coordinate <= ly && (y_coordinate + obj_height) > ly) {
+	memset(oam_line_data_buffer, 0, GAMEBOY_SCREEN_WIDTH * sizeof(uint32_t));
+	memset(oam_line_prio_buffer, 0, GAMEBOY_SCREEN_WIDTH * sizeof(uint8_t));
 
-			uint8_t line_offset = obj_y_flip
-						      ? ((obj_height - 1) - (ly - y_coordinate)) * 2
-						      : (ly - y_coordinate) * 2;
-			uint16_t address =
-				TILE_DATA_UNSIGNED_ADDR + (data_tile * 0x10) + line_offset;
-			uint16_t tile_data = CAT_BYTES(mem.map[address], mem.map[address + 1]);
-			uint32_t *palette = (obj_palette) ? &obp1_color_to_palette[0]
-							  : &obp0_color_to_palette[0];
+	for (int i = 0; i < oam_obj_count; i++) {
 
-			for (int pixel_num = 0; pixel_num < 8; pixel_num++) {
+		int16_t x_coord = oam_line_slot[i].x_coord;
+		uint8_t start = oam_line_slot[i].start;
+		uint8_t end = start + oam_line_slot[i].len;
+		uint8_t good = start;
 
-				uint16_t color_info =
-					(obj_x_flip) ? (((tile_data >> pixel_num) & 0x0101) << 7)
-						     : ((tile_data << pixel_num) & 0x8080);
-				uint32_t pixel_data = 0;
+		if (start == end) {
+			continue;
+		}
 
-				switch (color_info) {
-				case 0x0000:
-					pixel_data = 0;
-					break;
-				case 0x0080:
-					pixel_data = palette[1];
-					break;
-				case 0x8000:
-					pixel_data = palette[2];
-					break;
-				case 0x8080:
-					pixel_data = palette[3];
-					break;
-				}
+		// bounding box for overlaping objects, lower x coordinate prevails (dmg)
+		for (int j = 0; j < i; j++) {
+			int16_t x_coord_drawn = oam_line_slot[j].x_coord;
+			uint8_t start_drawn = oam_line_slot[j].start;
+			uint8_t end_drawn = start_drawn + oam_line_slot[j].len;
 
-				if (pixel_data != 0 && x_coordinate + pixel_num >= 0 &&
-				    (x_coordinate + pixel_num) < GAMEBOY_SCREEN_WIDTH) {
-					if ((obj_prio) && ucBGWINline[x_coordinate + pixel_num]) {
-						// do nothing this circumstance
-					} else {
-						gb_ppu_update_frame_buffer(
-							pixel_data, x_coordinate + pixel_num);
-					}
-				}
+			if (x_coord_drawn < x_coord && start < end_drawn && start_drawn < end) {
+				good = end_drawn;
+			}
+		}
+
+		// draw object pixels that have no conflicts
+		for (int pos = good; pos < end; pos++) {
+			if (oam_line_slot[i].buf[pos - start] != 0) {
+				oam_line_data_buffer[pos] = oam_line_slot[i].buf[pos - start];
+				oam_line_prio_buffer[pos] = oam_line_slot[i].obj_prio;
+			}
+		}
+
+		// draw over transparent object pixels anyways
+		for (int pos = start; pos < good; pos++) {
+			if (oam_line_data_buffer[pos] == 0) {
+				oam_line_data_buffer[pos] = oam_line_slot[i].buf[pos - start];
+			}
+		}
+	}
+
+	for (int i = 0; i < GAMEBOY_SCREEN_WIDTH; i++) {
+		if (oam_line_prio_buffer[i] && bg_wn_buffer[i]) {
+			continue;
+		} else {
+			if (oam_line_data_buffer[i] != 0) {
+				gb_ppu_update_frame_buffer(oam_line_data_buffer[i], i);
 			}
 		}
 	}
@@ -510,7 +631,7 @@ static void gb_ppu_draw_line(void)
 	}
 
 	if (ly == 143) {
-		gb_ppu_display_frame_buffer(&ucGBLine[(0)]);
+		gb_ppu_display_frame_buffer(&frame_buffer[(0)]);
 	}
 }
 
