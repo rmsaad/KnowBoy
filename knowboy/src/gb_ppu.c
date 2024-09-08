@@ -574,7 +574,7 @@ static void gb_ppu_draw_line_objects(void)
 			uint8_t start_drawn = oam_line_slot[j].start;
 			uint8_t end_drawn = start_drawn + oam_line_slot[j].len;
 
-			if (x_coord_drawn < x_coord && start < end_drawn && start_drawn < end) {
+			if (x_coord_drawn <= x_coord && start < end_drawn && start_drawn < end) {
 				good = end_drawn;
 			}
 		}
