@@ -61,6 +61,9 @@ static uint32_t ppu_dot_counter;
 // oam object count
 uint8_t oam_obj_count = 0;
 
+// internal window line counter
+uint8_t wn_internal_line = 0;
+
 // Palettes
 static uint32_t bgp_color_to_palette[4];
 static uint32_t obp0_color_to_palette[4];
@@ -162,6 +165,7 @@ void gb_ppu_init(void)
 	wx = 0;
 
 	oam_obj_count = 0;
+	wn_internal_line = 0;
 }
 
 /**
@@ -234,6 +238,7 @@ void gb_ppu_step(void)
 
 			if (ly >= MODE_1_SCANLINE) {
 				// VBlank region
+				wn_internal_line = 0;
 				gb_ppu_set_stat_mode(STAT_MODE_1);
 				if (mode_1_sel) {
 					SET_BIT(mem.map[IF_ADDR], 1);
@@ -509,10 +514,9 @@ static void gb_ppu_draw_line_window(void)
 	if (wy > ly || wy > 143 || wx > 166)
 		return;
 
-	uint16_t tile_offset =
-		(((uint8_t)(ly - wy) / 8) * 32);     // gives the address offset in the tile map
-	uint8_t line_offset = (((ly - wy) % 8)) * 2; // gives the line offset in the tile
-	uint8_t pixl_offset = (wx - 7) % 8;	     // gives current pixel offset
+	uint16_t tile_offset = (((uint8_t)(wn_internal_line) / 8) * 32);
+	uint8_t line_offset = (((wn_internal_line) % 8)) * 2;
+	uint8_t pixl_offset = (wx - 7) % 8;
 
 	uint16_t tile_data = gb_ppu_get_tile_line_data(
 		tile_offset, line_offset, wn_display_addr); // tile data holds tile line information
@@ -549,6 +553,7 @@ static void gb_ppu_draw_line_window(void)
 							      wn_display_addr);
 		}
 	}
+	wn_internal_line++;
 }
 
 /**
