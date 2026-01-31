@@ -62,7 +62,7 @@ void gb_memory_init(const uint8_t *boot_rom, const uint8_t *game_rom, bool boot_
 	rom = game_rom;
 	memset(&mem.map[0], 0x00, 0xFFFF);
 	gb_memory_load(game_rom, 32768);
-	gb_mbc_set_controller_type(mem.map[0x147]);
+	gb_mbc_set_cartridge_info(mem.map[0x147], mem.map[0x148], mem.map[0x149]);
 	gb_memory_write(TAC_ADDR, 0xF8);
 	mem.map[JOY_ADDR] = 0xCF;
 	mem.map[IF_ADDR] = 0xE1;
@@ -184,9 +184,14 @@ void gb_memory_write(uint16_t address, uint8_t data)
 	}
 
 	if ((address >= CARTROM_BANK0 && address < VRAM_BASE)) {
-		gb_mbc_write(address, data);
+		gb_mbc_write_register(address, data);
 		return;
 	}
+
+  if ((address >= CARTRAM_BASE && address < GBRAM_BANK0)) {
+    gb_mbc_write_ram_bank(address, data);
+    return;
+  }
 
 	if (address >= ECHORAM_BASE && address < OAM_BASE) {
 		mem.map[address - 0x2000] = data;
@@ -252,7 +257,7 @@ uint8_t gb_memory_read(uint16_t address)
 {
 
 	if ((address >= CARTROM_BANK0 && address < VRAM_BASE) && mem.map[BOOT_EN_ADDR] != 0) {
-		return gb_mbc_read_bank_x(address);
+		return gb_mbc_read_rom_bank(address);
 	}
 
 	else if (address >= IO_BASE) {
@@ -276,6 +281,10 @@ uint8_t gb_memory_read(uint16_t address)
 			return mem.map[address];
 		}
 	}
+
+  else if ((address >= CARTRAM_BASE && address < GBRAM_BANK0)) {
+    return gb_mbc_read_ram_bank(address);
+  }
 
 	else if (address >= ECHORAM_BASE && address < OAM_BASE)
 		return mem.map[address - 0x2000];

@@ -13,21 +13,50 @@
 #include "logging.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+
+#define ROM_BANK_SIZE 16384
+#define RAM_BANK_SIZE 8192
 
 static uint8_t gb_mbc_controller_code = 0;
+static uint8_t gb_mbc_rom_bank_count = 0;
+static uint8_t gb_mbc_ram_bank_count = 0;
 static uint8_t gb_mbc_ram_enable = 0;
-static uint8_t gb_mbc_offset_low = 0x01;
-static uint8_t gb_mbc_offset_high = 0x0;
+static uint8_t gb_mbc_bank1 = 0x01;
+static uint8_t gb_mbc_bank2 = 0x0;
 static uint8_t gb_mbc_bank_mode = 0x0;
+static uint8_t *gb_mbc_bank_ram = NULL;
 
 extern const uint8_t *rom;
+extern memory_t mem;
+
+static const uint8_t gb_mbc_rom_bank_lut[] = {
+  2,   // 32KB
+  4,   // 64KB
+  8,   // 128KB
+  16,  // 256KB
+  32,  // 512KB
+  64,  // 1MB
+  128, // 2MB
+  256, // 4MB
+  512  // 8MB
+};
+
+static const uint8_t gb_mbc_ram_bank_lut[] = {
+  0,  // No RAM
+  1,  // not used
+  1,  // 8KB   (1 bank of 8KB)
+  4,  // 32KB  (4 banks of 8KB each)
+  16, // 128KB (16 banks of 8KB each)
+  8   // 64KB  (8 banks of 8KB each)
+};
 
 void gbc_mbc_init(void)
 {
 	gb_mbc_controller_code = 0;
 	gb_mbc_ram_enable = 0;
-	gb_mbc_offset_low = 0x01;
-	gb_mbc_offset_high = 0x0;
+	gb_mbc_bank1 = 0x01;
+	gb_mbc_bank2 = 0x0;
 	gb_mbc_bank_mode = 0x0;
 }
 
@@ -37,9 +66,14 @@ void gbc_mbc_init(void)
  * @param code data stored at memory location 0x147
  * @returns Nothing
  */
-void gb_mbc_set_controller_type(uint8_t code)
+void gb_mbc_set_cartridge_info(uint8_t code, uint8_t rom_size, uint8_t ram_size)
 {
 	gb_mbc_controller_code = code;
+	gb_mbc_rom_bank_count = gb_mbc_rom_bank_lut[rom_size];
+	gb_mbc_ram_bank_count = gb_mbc_ram_bank_lut[ram_size];
+  if (gb_mbc_ram_bank_count > 0) {
+    gb_mbc_bank_ram = (uint8_t *)malloc(gb_mbc_ram_bank_count * RAM_BANK_SIZE);
+  }
 }
 
 /**
@@ -48,15 +82,24 @@ void gb_mbc_set_controller_type(uint8_t code)
  * @param address memory map address
  * @returns data stored at specified ROM address
  */
-uint8_t gb_mbc_read_bank_x(uint16_t address)
+uint8_t gb_mbc_read_rom_bank(uint16_t address)
 {
-	if (address < CARTROM_BANKX) {
+  if (gb_mbc_controller_code == 0) {
 		return (uint8_t)rom[address];
-	} else if (gb_mbc_controller_code == 0) {
-		return (uint8_t)rom[address];
+	} else if (address < CARTROM_BANKX) {
+    uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : (gb_mbc_bank2 << 5);
+    if (bank >= gb_mbc_rom_bank_count) {
+      bank = bank % gb_mbc_rom_bank_count;
+    }
+    uint32_t addr = (uint32_t)(bank * ROM_BANK_SIZE) + address;
+    return rom[addr];
 	} else {
-		return (uint8_t)
-			rom[((gb_mbc_offset_high + gb_mbc_offset_low - 1) * 0x4000) + (address)];
+    uint32_t bank = (gb_mbc_bank2 << 5) + gb_mbc_bank1;
+    if (bank >= gb_mbc_rom_bank_count) {
+      bank = bank % gb_mbc_rom_bank_count;
+    }
+    uint32_t addr = (uint32_t)(bank * ROM_BANK_SIZE) + (address & (ROM_BANK_SIZE - 1));
+    return rom[addr];
 	}
 }
 
@@ -73,28 +116,63 @@ uint8_t gb_mbc_read_bank_x(uint16_t address)
  * @param data byte to be written to MBC register
  * @returns Nothing
  */
-void gb_mbc_write(uint16_t address, uint8_t data)
+void gb_mbc_write_register(uint16_t address, uint8_t data)
 {
 	if (gb_mbc_controller_code > 0) {
 		if (address < 0x2000) {
-			if (data == 0x0A) {
+			if ((data & 0x0F) == 0x0A) {
 				gb_mbc_ram_enable = 1;
 			} else {
 				gb_mbc_ram_enable = 0;
 			}
 		} else if (address < 0x4000) {
-			gb_mbc_offset_low = (data & 0x1F);
-			if (gb_mbc_offset_low == 0) {
-				gb_mbc_offset_low = 1;
+			gb_mbc_bank1 = (data & 0x1F);
+			if (gb_mbc_bank1 == 0) {
+				gb_mbc_bank1 = 1;
 			}
 		} else if (address < 0x6000) {
-			if (gb_mbc_bank_mode == 0) {
-				gb_mbc_offset_high = ((data & 0x03) << 5);
-
-			} else {
-			}
-		} else {
+      gb_mbc_bank2 = (data & 0x03);
+		} else if (address < 0x8000) {
 			gb_mbc_bank_mode = (data & 0x01);
 		}
 	}
+}
+
+/**
+ * @brief This function will return data from a RAM location in the memory map depending on the MBC
+ * type
+ * @param address memory map address
+ * @returns data stored at specified RAM address
+ */
+uint8_t gb_mbc_read_ram_bank(uint16_t address)
+{
+  if(gb_mbc_ram_enable && gb_mbc_bank_ram != NULL){
+    uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
+    if (bank >= gb_mbc_ram_bank_count) {
+      bank = bank % gb_mbc_ram_bank_count;
+    }
+    return gb_mbc_bank_ram[bank * RAM_BANK_SIZE + (address & (RAM_BANK_SIZE - 1))];
+  }else{
+    return 0xFF;
+  }
+}
+
+/**
+ * @brief This function will write data to a RAM location in the memory map depending on the MBC
+ * type
+ * @param address memory map address
+ * @param data byte to be written to RAM location
+ * @returns Nothing
+ */
+void gb_mbc_write_ram_bank(uint16_t address, uint8_t data)
+{
+  if(gb_mbc_ram_enable && gb_mbc_bank_ram != NULL){
+    uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
+    if (bank >= gb_mbc_ram_bank_count) {
+      bank = bank % gb_mbc_ram_bank_count;
+    }
+    gb_mbc_bank_ram[bank * RAM_BANK_SIZE + (address & (RAM_BANK_SIZE - 1))] = data;
+  }else{
+    return;
+  }
 }
