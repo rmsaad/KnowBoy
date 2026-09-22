@@ -14,7 +14,13 @@
 
 typedef void (*gb_ppu_display_frame_buffer_t)(uint32_t *);
 
+typedef enum {
+	GB_PPU_PALETTE_DMG = 0U,
+	GB_PPU_PALETTE_GREYSCALE,
+} gb_ppu_palette_t;
+
 void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame_buffer);
+void gb_ppu_set_palette(gb_ppu_palette_t palette);
 void gb_ppu_step(void);
 void gb_ppu_init(void);
 uint8_t gb_ppu_memory_read(uint16_t address);

@@ -37,6 +37,11 @@
 #define DARK_SHADE   0XFF306230
 #define BLACK_SHADE  0XFF0F380F
 
+#define LIGHT_GREY_SHADE  0XFFFFFFFF
+#define MEDIUM_GREY_SHADE 0XFFAAAAAA
+#define DARK_GREY_SHADE	  0XFF555555
+#define BLACK_GREY_SHADE  0XFF000000
+
 typedef struct {
 	uint32_t buf[8];
 	uint8_t obj_index;
@@ -63,6 +68,12 @@ uint8_t oam_obj_count = 0;
 
 // internal window line counter
 uint8_t wn_internal_line = 0;
+
+// Shades the four gameboy colors are drawn with, selected by gb_ppu_set_palette()
+static const uint32_t dmg_shades[4] = {LIGHT_SHADE, MEDIUM_SHADE, DARK_SHADE, BLACK_SHADE};
+static const uint32_t greyscale_shades[4] = {LIGHT_GREY_SHADE, MEDIUM_GREY_SHADE,
+					     DARK_GREY_SHADE, BLACK_GREY_SHADE};
+static const uint32_t *shades = dmg_shades;
 
 // Palettes
 static uint32_t bgp_color_to_palette[4];
@@ -130,6 +141,22 @@ static uint16_t gb_ppu_get_tile_line_data(uint16_t tile_offset, uint8_t line_off
 void gb_ppu_set_display_frame_buffer(gb_ppu_display_frame_buffer_t display_frame_buffer)
 {
 	gb_ppu_display_frame_buffer = display_frame_buffer;
+}
+
+/**
+ * @brief Selects the four shades the gameboy colors are drawn with
+ * @details The cached BGP/OBP0/OBP1 palettes are rebuilt from their registers so that a palette
+ * change takes effect on the next drawn line rather than on the next palette register write.
+ * @param palette palette to draw with
+ * @return Nothing
+ */
+void gb_ppu_set_palette(gb_ppu_palette_t palette)
+{
+	shades = (palette == GB_PPU_PALETTE_GREYSCALE) ? greyscale_shades : dmg_shades;
+
+	gb_ppu_memory_write(BGP_ADDR, mem.map[BGP_ADDR]);
+	gb_ppu_memory_write(OBP0_ADDR, mem.map[OBP0_ADDR]);
+	gb_ppu_memory_write(OBP1_ADDR, mem.map[OBP1_ADDR]);
 }
 
 /**
@@ -632,7 +659,7 @@ static void gb_ppu_draw_line(void)
 		}
 	} else {
 		for (int j = 0; j < GAMEBOY_SCREEN_WIDTH; j++) {
-			gb_ppu_update_frame_buffer(LIGHT_SHADE, j);
+			gb_ppu_update_frame_buffer(shades[0], j);
 		}
 	}
 
@@ -707,16 +734,16 @@ void gb_ppu_memory_write(uint16_t address, uint8_t data)
 		for (int i = 0; i < 4; i++) {
 			switch ((data >> (i * 2)) & 0x03) {
 			case 0:
-				palette_sel[i] = LIGHT_SHADE;
+				palette_sel[i] = shades[0];
 				break;
 			case 1:
-				palette_sel[i] = MEDIUM_SHADE;
+				palette_sel[i] = shades[1];
 				break;
 			case 2:
-				palette_sel[i] = DARK_SHADE;
+				palette_sel[i] = shades[2];
 				break;
 			case 3:
-				palette_sel[i] = BLACK_SHADE;
+				palette_sel[i] = shades[3];
 				break;
 			default:
 				break;

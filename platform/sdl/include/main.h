@@ -5,6 +5,8 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 
+#include "gb_ppu.h"
+
 #define MAX_MENU_OPTIONS 3
 #define AUDIO_BUF_SIZE	 32768
 #define QUEUE_SIZE	 10
@@ -15,6 +17,7 @@ typedef struct {
 	SDL_Window *window;
 	SDL_Renderer *renderer;
 	SDL_Texture *texture;
+	int scale;
 	int window_width;
 	int window_height;
 	const float aspect_ratio;
@@ -70,6 +73,7 @@ typedef struct {
 	gb_rom_t boot_rom;
 	gb_state_t state;
 	gb_debug_t debug;
+	gb_ppu_palette_t palette;
 	bool menu_skip;
 	bool boot_skip;
 	const char *cache_file;

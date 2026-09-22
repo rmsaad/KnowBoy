@@ -19,7 +19,9 @@
 #include "gb_memory.h"
 #include "gb_ppu.h"
 
-#define MAX_LINE_LENGTH 1024
+#define MAX_LINE_LENGTH	     1024
+#define DEFAULT_WINDOW_SCALE 3
+#define MAX_WINDOW_SCALE     10
 
 static uint8_t dir_input = 0;
 static uint8_t but_input = 0;
@@ -364,7 +366,7 @@ void display_fps(gb_av_t *gb_av)
 		last_time = current_time;
 
 		// Update window title with FPS
-		snprintf(title, 100, "FPS: %d", fps);
+		snprintf(title, 100, "Knowboy - FPS: %d", fps);
 		SDL_SetWindowTitle(gb_av->window, title);
 	}
 }
@@ -414,13 +416,12 @@ int listen_to_stdin(void *debug_ctx)
 	char input[MESSAGE_LENGTH];
 	gb_debug_t *gb_debug = debug_ctx;
 	printf("> ");
-	while (true) {
-		if (fgets(input, sizeof(input), stdin) != NULL) {
-			input[strcspn(input, "\n")] = '\0';
-			SDL_LockMutex(gb_debug->queue_mutex);
-			enqueue(&gb_debug->queue, input);
-			SDL_UnlockMutex(gb_debug->queue_mutex);
-		}
+	/* a NULL return also means stdin is closed, which ends the thread */
+	while (fgets(input, sizeof(input), stdin) != NULL) {
+		input[strcspn(input, "\n")] = '\0';
+		SDL_LockMutex(gb_debug->queue_mutex);
+		enqueue(&gb_debug->queue, input);
+		SDL_UnlockMutex(gb_debug->queue_mutex);
 	}
 	return 0;
 }
@@ -475,6 +476,12 @@ int init(gb_config_t *gb_config)
 	if (gb_config->av.enable) {
 		SDL_Init(SDL_INIT_VIDEO);
 
+		/* at 1x the frame buffer is blitted texel for pixel, so keep it exact */
+		if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+				 (gb_config->av.scale == 1) ? "nearest" : "linear")) {
+			LOG_ERR("Warning: texture filtering not enabled!");
+		}
+
 		gb_config->av.window =
 			SDL_CreateWindow("Knowboy", SDL_WINDOWPOS_UNDEFINED,
 					 SDL_WINDOWPOS_UNDEFINED, gb_config->av.window_width,
@@ -492,10 +499,6 @@ int init(gb_config_t *gb_config)
 
 		SDL_SetRenderDrawColor(gb_config->av.renderer, 0, 0, 0, 255);
 		SDL_RenderClear(gb_config->av.renderer);
-
-		if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear")) {
-			LOG_ERR("Warning: Linear texture filtering not enabled!");
-		}
 
 		/* init SDL audio */
 		audio_init();
@@ -625,6 +628,7 @@ int load_rom(gb_config_t *gb_config)
 	}
 	gb_cpu_init();
 	gb_ppu_init();
+	gb_ppu_set_palette(gb_config->palette);
 	gb_apu_init(gb_config->av.audio_buf, &gb_config->av.audio_buf_pos, AUDIO_BUF_SIZE);
 	gb_memory_init(gb_config->boot_rom.data, gb_config->game_rom.data, gb_config->boot_skip);
 	gb_memory_set_control_function(controls_joypad);
@@ -666,6 +670,19 @@ void app_close(gb_av_t *gb_av)
 	}
 }
 
+void print_usage(const char *name)
+{
+	printf("usage: %s [options]\n"
+	       "  --bootrom <path|none>   boot rom to run, or \"none\" to skip the boot rom\n"
+	       "  --gamerom <path>        game rom to run\n"
+	       "  --start                 skip the main menu and start the game rom\n"
+	       "  --scale <1-%d>          window size as a multiple of %dx%d (default %d)\n"
+	       "  --palette <dmg|grey>    shades to draw with (default dmg)\n"
+	       "  --noninteractive        run without audio or video\n",
+	       name, MAX_WINDOW_SCALE, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT,
+	       DEFAULT_WINDOW_SCALE);
+}
+
 int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
 {
 	int r = 0;
@@ -698,10 +715,33 @@ int parse_arguments(int argc, char *argv[], gb_config_t *gb_config)
 		} else if (strcmp(argv[i], "--start") == 0) {
 			gb_config->menu_skip = true;
 
+		} else if (strcmp(argv[i], "--scale") == 0 && i + 1 < argc) {
+			char *end = NULL;
+			long scale = strtol(argv[++i], &end, 10);
+			if (*end != '\0' || scale < 1 || scale > MAX_WINDOW_SCALE) {
+				LOG_ERR("Invalid scale argument, expected 1-%d", MAX_WINDOW_SCALE);
+				return -1;
+			}
+			gb_config->av.scale = (int)scale;
+
+		} else if (strcmp(argv[i], "--palette") == 0 && i + 1 < argc) {
+			char *palette = argv[++i];
+			if (strcmp(palette, "dmg") == 0) {
+				gb_config->palette = GB_PPU_PALETTE_DMG;
+			} else if (strcmp(palette, "grey") == 0 || strcmp(palette, "gray") == 0 ||
+				   strcmp(palette, "greyscale") == 0 ||
+				   strcmp(palette, "grayscale") == 0) {
+				gb_config->palette = GB_PPU_PALETTE_GREYSCALE;
+			} else {
+				LOG_ERR("Invalid palette argument, expected dmg or grey");
+				return -1;
+			}
+
 		} else if (strcmp(argv[i], "--noninteractive") == 0) {
 			gb_config->av.enable = false;
 		} else {
 			LOG_ERR("Error: Unrecognized argument '%s'\n", argv[i]);
+			print_usage(argv[0]);
 			return -1;
 		}
 	}
@@ -718,8 +758,7 @@ int main(int argc, char *argv[])
 				.window = NULL,
 				.renderer = NULL,
 				.texture = NULL,
-				.window_width = GAMEBOY_SCREEN_WIDTH * 3,
-				.window_height = GAMEBOY_SCREEN_HEIGHT * 3,
+				.scale = DEFAULT_WINDOW_SCALE,
 				.aspect_ratio =
 					(float)GAMEBOY_SCREEN_WIDTH / (float)GAMEBOY_SCREEN_HEIGHT,
 			},
@@ -760,6 +799,7 @@ int main(int argc, char *argv[])
 				.enable = true,
 			},
 		.state = MAIN_MENU,
+		.palette = GB_PPU_PALETTE_DMG,
 		.menu_skip = false,
 		.boot_skip = false,
 		.cache_file = "cache.txt",
@@ -769,6 +809,9 @@ int main(int argc, char *argv[])
 		app_close(&gb_config.av);
 		exit(1);
 	}
+
+	gb_config.av.window_width = GAMEBOY_SCREEN_WIDTH * gb_config.av.scale;
+	gb_config.av.window_height = GAMEBOY_SCREEN_HEIGHT * gb_config.av.scale;
 
 	if (init(&gb_config) != 0) {
 		LOG_ERR("Failed to initialize emulator");
