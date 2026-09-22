@@ -47,8 +47,9 @@ typedef enum {
 	HUC1_RAM_BATTERY = 0xFF,
 } cartridge_type_t;
 
-#define ROM_BANK_SIZE 16384
-#define RAM_BANK_SIZE 8192
+#define ROM_BANK_SIZE	   16384
+#define RAM_BANK_SIZE	   8192
+#define RAM_BANK_MBC2_SIZE 512
 
 #define NINTENDO_LOGO_ADDR 0x0104
 #define NINTENDO_LOGO_SIZE 0x30
@@ -94,6 +95,8 @@ void gbc_mbc_init(void)
 	gb_mbc_bank1 = 0x01;
 	gb_mbc_bank2 = 0x0;
 	gb_mbc_bank_mode = 0x0;
+	free(gb_mbc_bank_ram);
+	gb_mbc_bank_ram = NULL;
 }
 
 /**
@@ -111,7 +114,9 @@ void gb_mbc_set_cartridge_info(uint8_t code, uint8_t rom_size, uint8_t ram_size)
 	gb_mbc_ram_bank_count = gb_mbc_ram_bank_lut[ram_size];
 	gb_mbc_multicart = false;
 	if (gb_mbc_ram_bank_count > 0) {
-		gb_mbc_bank_ram = (uint8_t *)malloc(gb_mbc_ram_bank_count * RAM_BANK_SIZE);
+		gb_mbc_bank_ram = (uint8_t *)calloc(gb_mbc_ram_bank_count, RAM_BANK_SIZE);
+	} else if (gb_mbc_controller_code == MBC2 || gb_mbc_controller_code == MBC2_BATTERY) {
+		gb_mbc_bank_ram = (uint8_t *)calloc(RAM_BANK_MBC2_SIZE, 1);
 	}
 
 	if (gb_mbc_controller_code == MBC1 || gb_mbc_controller_code == MBC1_RAM ||
@@ -171,29 +176,39 @@ uint8_t gb_mbc_read_rom_bank(uint16_t address)
 				(uint32_t)(bank * ROM_BANK_SIZE) + (address & (ROM_BANK_SIZE - 1));
 			return rom[addr];
 		}
-
+	case MBC2:
+	case MBC2_BATTERY:
+		if (address < CARTROM_BANKX) {
+			return (uint8_t)rom[address];
+		} else {
+			bank = gb_mbc_bank1;
+			if (bank >= gb_mbc_rom_bank_count) {
+				bank = bank % gb_mbc_rom_bank_count;
+			}
+			uint32_t addr =
+				(uint32_t)(bank * ROM_BANK_SIZE) + (address & (ROM_BANK_SIZE - 1));
+			return rom[addr];
+		}
 	default:
 		return (uint8_t)rom[address];
 	}
 }
 
 /**
- * @brief Data is written to MBC register when the address falls in range 0x0000 to 0x7FFF.
- * @details When the range 0x0000 - 0x1FFF is written to with value 0x0A, the Gameboy
- * external RAM is enabled. Any other value written to this range will result in the
- * external RAM being disabled. When the range 0x2000 - 0x3FFF is written to, the lower 5
- * bits correspond to the switch-able ROM bank that read operation are to be read from. When
- * the range 0x4000 - 0x5FFF is written to, depending on the mode it will either specify the
- * top 2 bits of the ROM bank to be read from or it specify the current RAM bank. When the
- * range falls between 0x6000 - 0x7FFF if the value 0 is written then ROM mode is selected
- * and if the value 1 is written then RAM mode is selected.
+ * @brief Data is written to MBC register(s) when the address falls specified ranges depending on
+ * the MBC type.
  * @param address memory map address
  * @param data byte to be written to MBC register
  * @returns Nothing
  */
 void gb_mbc_write_register(uint16_t address, uint8_t data)
 {
-	if (gb_mbc_controller_code != ROM_ONLY) {
+	switch (gb_mbc_controller_code) {
+	case ROM_ONLY:
+		return;
+	case MBC1:
+	case MBC1_RAM:
+	case MBC1_RAM_BATTERY:
 		if (address < 0x2000) {
 			if ((data & 0x0F) == 0x0A) {
 				gb_mbc_ram_enable = 1;
@@ -210,6 +225,22 @@ void gb_mbc_write_register(uint16_t address, uint8_t data)
 		} else if (address < 0x8000) {
 			gb_mbc_bank_mode = (data & 0x01);
 		}
+		break;
+	case MBC2:
+	case MBC2_BATTERY:
+		if (address < 0x4000) {
+			if (address & 0x0100) {
+				gb_mbc_bank1 = data & 0x0F;
+				if (gb_mbc_bank1 == 0) {
+					gb_mbc_bank1 = 1;
+				}
+			} else {
+				gb_mbc_ram_enable = ((data & 0x0F) == 0x0A);
+			}
+		}
+		break;
+	default:
+		return;
 	}
 }
 
@@ -220,13 +251,29 @@ void gb_mbc_write_register(uint16_t address, uint8_t data)
  */
 uint8_t gb_mbc_read_ram_bank(uint16_t address)
 {
-	if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
-		uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
-		if (bank >= gb_mbc_ram_bank_count) {
-			bank = bank % gb_mbc_ram_bank_count;
+	switch (gb_mbc_controller_code) {
+	case ROM_ONLY:
+		return 0xFF;
+	case MBC1:
+	case MBC1_RAM:
+	case MBC1_RAM_BATTERY:
+		if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
+			uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
+			if (bank >= gb_mbc_ram_bank_count) {
+				bank = bank % gb_mbc_ram_bank_count;
+			}
+			return gb_mbc_bank_ram[bank * RAM_BANK_SIZE +
+					       (address & (RAM_BANK_SIZE - 1))];
 		}
-		return gb_mbc_bank_ram[bank * RAM_BANK_SIZE + (address & (RAM_BANK_SIZE - 1))];
-	} else {
+		return 0xFF;
+	case MBC2:
+	case MBC2_BATTERY:
+		/* the upper nibble is not physically present and reads back as 1s */
+		if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
+			return gb_mbc_bank_ram[address & (RAM_BANK_MBC2_SIZE - 1)] | 0xF0;
+		}
+		return 0xFF;
+	default:
 		return 0xFF;
 	}
 }
@@ -239,13 +286,29 @@ uint8_t gb_mbc_read_ram_bank(uint16_t address)
  */
 void gb_mbc_write_ram_bank(uint16_t address, uint8_t data)
 {
-	if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
-		uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
-		if (bank >= gb_mbc_ram_bank_count) {
-			bank = bank % gb_mbc_ram_bank_count;
+	switch (gb_mbc_controller_code) {
+	case ROM_ONLY:
+		return;
+	case MBC1:
+	case MBC1_RAM:
+	case MBC1_RAM_BATTERY:
+		if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
+			uint32_t bank = (gb_mbc_bank_mode == 0) ? 0 : gb_mbc_bank2;
+			if (bank >= gb_mbc_ram_bank_count) {
+				bank = bank % gb_mbc_ram_bank_count;
+			}
+			gb_mbc_bank_ram[bank * RAM_BANK_SIZE + (address & (RAM_BANK_SIZE - 1))] =
+				data;
 		}
-		gb_mbc_bank_ram[bank * RAM_BANK_SIZE + (address & (RAM_BANK_SIZE - 1))] = data;
-	} else {
+		break;
+	case MBC2:
+	case MBC2_BATTERY:
+		/* only the low nibble is physically present in the MBC2 */
+		if (gb_mbc_ram_enable && gb_mbc_bank_ram != NULL) {
+			gb_mbc_bank_ram[address & (RAM_BANK_MBC2_SIZE - 1)] = data & 0x0F;
+		}
+		break;
+	default:
 		return;
 	}
 }
